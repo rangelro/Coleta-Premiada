@@ -1,4 +1,16 @@
+# Arquivos de ambiente
 .env
+.env.example
+
+# Python
 __pycache__/
 *.pyc
+*.log
+.venv/
+
+# Node.js
 node_modules/
+
+# Django
+staticfiles/
+db.sqlite3
