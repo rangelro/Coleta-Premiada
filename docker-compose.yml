@@ -52,6 +52,43 @@ services:
     volumes:
       - minio_data:/data
 
+  collection-microservice:
+    build: ./services/collection-microservice
+    env_file: .env
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mongodb
+      - rabbitmq
+    volumes:
+      - ./services/collection-microservice:/app
+
+  core:
+    build: ./services/core
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - rabbitmq
+    volumes:
+      - ./services/core:/app
+
+  core-consumer:
+    build: ./services/core
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      PYTHONUNBUFFERED: 1 # Desliga cache de buffer do python
+    command: python manage.py consume_queue
+    depends_on:
+      - postgres
+      - rabbitmq
+    volumes:
+      - ./services/core:/app
+
 volumes:
   postgres_data:
   mongo_data:
