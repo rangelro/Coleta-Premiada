@@ -31,18 +31,9 @@ class Imovel(models.Model):
 
 class SaldoPontos(models.Model):
     """Saldo acumulado de desconto no IPTU por imóvel no ciclo (ano)."""
-    imovel = models.ForeignKey(
-        Imovel, on_delete=models.PROTECT, related_name='saldos'
-    )
+    imovel = models.ForeignKey(Imovel, on_delete=models.PROTECT, related_name='saldos')
     ciclo = models.IntegerField(help_text='Ano de apuração')
-    desconto_percentual = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0,
-        help_text='Desconto acumulado no IPTU (%)'
-    )
-    total_kg = models.DecimalField(
-        max_digits=10, decimal_places=3, default=0,
-        help_text='Peso total de material entregue no ciclo (kg)'
-    )
+    desconto_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text='Desconto acumulado no IPTU (%)')
     atualizado = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -51,5 +42,5 @@ class SaldoPontos(models.Model):
     def __str__(self):
         return (
             f"{self.imovel.inscricao} | {self.ciclo} | "
-            f"{self.desconto_percentual}% | {self.total_kg} kg"
+            f"{self.desconto_percentual}%"
         )
