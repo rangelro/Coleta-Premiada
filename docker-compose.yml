@@ -8,11 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-<<<<<<< HEAD
-      - "5444:5432"
-=======
       - "5433:5432"
->>>>>>> 11f503e99780001893fed6e85c5085ac159c52a0
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
