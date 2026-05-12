@@ -9,10 +9,11 @@ from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
-
+# Consumer da fila RabbitMQ que recebe as pesagens e insere no banco do Core
 class Command(BaseCommand):
-    help = 'Consome mensagens da fila RabbitMQ e registra coletas no Core'
+    help = 'Consome mensagens da fila RabbitMQ e registra as coletas no Core'
 
+    # Handle executa o consumer e fica aguardando mensagens
     def handle(self, *args, **options):
         self.stdout.write('Iniciando consumer da fila pesagens...')
 
@@ -27,28 +28,27 @@ class Command(BaseCommand):
 
         conexao = pika.BlockingConnection(params)
         canal = conexao.channel()
-        canal.queue_declare(queue='pesagens', durable=True)
+        canal.queue_declare(queue='fila.pesagens', durable=True)
         canal.basic_qos(prefetch_count=1)
         canal.basic_consume(
-            queue='pesagens',
+            queue='fila.pesagens',
             on_message_callback=self._processar,
         )
 
         self.stdout.write('Aguardando mensagens. CTRL+C para sair.')
         canal.start_consuming()
 
+    # Processa a mensagem recebida e faz o cadastro no core
     def _processar(self, ch, method, properties, body):
         from collection.models import RegistroColeta
         from program.models import Imovel, SaldoPontos
-        from program.business_rules import (
-            calcular_desconto, aplicar_teto, DESCONTO_MAXIMO,
-        )
+        from program.business_rules import aplicar_teto
 
         try:
             dados = json.loads(body)
             self.stdout.write(f"Processando: {dados['id']}")
 
-            # Idempotência — ignora se já foi processado
+            # ignora se já foi processado
             if RegistroColeta.objects.filter(
                     id_microservico=dados['id']).exists():
                 self.stdout.write(f"  Duplicado ignorado: {dados['id']}")
@@ -61,25 +61,20 @@ class Command(BaseCommand):
                 ativo=True
             ).first()
 
-            # Calcula desconto com base nas regras de negócio
-            num_moradores = imovel.num_moradores if imovel else 1
-            peso = Decimal(dados['peso_kg'])
-
-            desconto_bruto = calcular_desconto(
-                peso, dados['material'], num_moradores
-            )
+            # Lê a pontuação já calculada do microserviço
+            pontuacao = Decimal(str(dados.get('pontuacao', 0)))
 
             # Aplica o teto de 40% se o imóvel estiver cadastrado
-            desconto_efetivo = desconto_bruto
+            desconto_efetivo = pontuacao
             ano_atual = timezone.now().year
 
             if imovel:
                 saldo, _ = SaldoPontos.objects.get_or_create(
                     imovel=imovel, ciclo=ano_atual,
-                    defaults={'desconto_percentual': 0, 'total_kg': 0}
+                    defaults={'desconto_percentual': 0}
                 )
                 desconto_efetivo = aplicar_teto(
-                    saldo.desconto_percentual, desconto_bruto
+                    saldo.desconto_percentual, pontuacao
                 )
 
             # Persiste o registro no PostgreSQL
@@ -87,26 +82,25 @@ class Command(BaseCommand):
                 id_microservico       = dados['id'],
                 imovel                = imovel,
                 inscricao_imobiliaria = dados['inscricao_imobiliaria'],
-                material              = dados['material'],
-                peso_kg               = peso,
-                agente_id             = dados['agente_id'],
-                desconto_gerado       = desconto_efetivo,
+                pontuacao             = pontuacao,
                 data_hora_coleta      = parse_datetime(dados['data_hora']),
             )
 
             # Atualiza o saldo do imóvel
             if imovel and desconto_efetivo > 0:
                 saldo.desconto_percentual += desconto_efetivo
-                saldo.total_kg += peso
                 saldo.save()
 
             self.stdout.write(
                 f"  Registrado: {coleta.inscricao_imobiliaria} "
-                f"| {dados['material']} | {peso}kg "
-                f"| {desconto_efetivo}% desconto"
+                f"| {pontuacao} recebidos "
+                f"| {desconto_efetivo}% aplicados no saldo"
             )
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
+        except json.JSONDecodeError as e:
+            logger.error(f"Mensagem malformada ignorada: {e}")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         except Exception as e:
             logger.error(f"Erro ao processar mensagem: {e}")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)

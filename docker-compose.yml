@@ -8,7 +8,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
+<<<<<<< HEAD
       - "5444:5432"
+=======
+      - "5433:5432"
+>>>>>>> 11f503e99780001893fed6e85c5085ac159c52a0
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,28 +20,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Banco de dados do Microserviço de Coleta
-  mongodb:
-    image: mongo:7
-    env_file: .env
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: [
-        "CMD-SHELL",
-        "mongosh 'mongodb://${MONGO_USER}:${MONGO_PASSWORD}@localhost:27017/admin' --quiet --eval 'db.runCommand({ ping: 1 })'"
-      ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
 
   # Fila de mensagens assíncrona
   rabbitmq:
@@ -71,19 +53,6 @@ services:
     volumes:
       - minio_data:/data
 
-  collection-microservice:
-    build: ./services/collection-microservice
-    env_file: .env
-    ports:
-      - "8001:8001"
-    depends_on:
-        mongodb:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
-    volumes:
-      - ./services/collection-microservice:/app
-
   core:
     build:
       context: ./services/core
@@ -100,6 +69,7 @@ services:
           condition: service_healthy
     volumes:
       - ./services/core:/app
+      - ./infra:/app/infra
 
   core-consumer:
     build:
@@ -116,9 +86,9 @@ services:
           condition: service_healthy
     volumes:
       - ./services/core:/app
+      - ./infra:/app/infra
 
 volumes:
   postgres_data:
-  mongo_data:
   rabbitmq_data:
   minio_data:
