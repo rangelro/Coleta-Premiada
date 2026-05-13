@@ -25,13 +25,13 @@ class UsuarioManager(BaseUserManager):
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
     PERFIS = [
-        ('coletor','Coletor'),
         ('supervisor','Supervisor'),
         ('morador','Morador'),
         ('gestor','Gestor')
     ]
 
     email    = models.EmailField(unique=True)
+    cpf      = models.CharField(max_length=14, unique=True)
     nome     = models.CharField(max_length=150)
     perfil   = models.CharField(max_length=20, choices=PERFIS)
     ativo    = models.BooleanField(default=True)
@@ -40,7 +40,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     objects  = UsuarioManager()
 
     USERNAME_FIELD  = 'email'
-    REQUIRED_FIELDS = ['nome', 'perfil']
+    REQUIRED_FIELDS = ['cpf', 'nome', 'perfil']
 
     def __str__(self):
         return f"{self.nome} ({self.perfil})"
