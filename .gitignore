@@ -15,3 +15,7 @@ node_modules/
 # Django
 staticfiles/
 db.sqlite3
+
+# Migrations
+**/migrations/*.py
+!**/migrations/__init__.py
