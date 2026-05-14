@@ -4,9 +4,9 @@ from .models import Imovel, SaldoPontos
 
 @admin.register(Imovel)
 class ImovelAdmin(admin.ModelAdmin):
-    list_display = ('inscricao', 'nome_titular', 'cpf_titular', 'num_moradores', 'ativo', 'data_adesao')
-    search_fields = ('inscricao', 'nome_titular', 'cpf_titular')
-    list_filter = ('ativo', 'data_adesao')
+    list_display = ('inscricao', 'num_moradores', 'ativo')
+    search_fields = ('inscricao',)
+    list_filter = ('ativo',)
 
 @admin.register(SaldoPontos)
 class SaldoPontosAdmin(admin.ModelAdmin):
