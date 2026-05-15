@@ -1,4 +1,5 @@
 from django.db import models
+from auditlog.registry import auditlog
 from program.models import Imovel
 
 
@@ -20,3 +21,5 @@ class RegistroColeta(models.Model):
             f"{self.imovel.inscricao} | "
             f"Pontuação: {self.pontuacao}"
         )
+    
+auditlog.register(RegistroColeta)
