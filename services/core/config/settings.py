@@ -22,11 +22,15 @@ INSTALLED_APPS = [
     'accounts',
     'program',
     'collection',
+
+    'auditlog' #auditoria
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware', # middleware de auditoria
+    'auditlog.middleware.AuditlogMiddleware', # middleware de auditoria
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
