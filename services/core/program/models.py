@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.conf import settings
+from auditlog.registry import auditlog
 
 
 class Imovel(models.Model):
@@ -35,6 +36,7 @@ class Imovel(models.Model):
     def __str__(self):
         return f"{self.inscricao} — {self.titular.nome}"
 
+auditlog.register(Imovel)
 
 class SaldoPontos(models.Model):
     """Saldo acumulado de desconto no IPTU por imóvel no ciclo (mensal)."""
@@ -51,3 +53,5 @@ class SaldoPontos(models.Model):
             f"{self.imovel.inscricao} | {self.ciclo} | "
             f"{self.desconto_percentual}%"
         )
+    
+auditlog.register(SaldoPontos)

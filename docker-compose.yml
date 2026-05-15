@@ -84,7 +84,22 @@ services:
       - ./services/core:/app
       - ./infra:/app/infra
 
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: coleta-premiada-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   rabbitmq_data:
   minio_data:
+  grafana-data:
