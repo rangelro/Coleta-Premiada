@@ -1,10 +1,6 @@
 from django.db import models
-from auditlog.registry import auditlog
-# Create your models here.
-
-
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from django.db import models
+from auditlog.registry import auditlog
 
 
 class UsuarioManager(BaseUserManager):
@@ -12,7 +8,7 @@ class UsuarioManager(BaseUserManager):
         if not email:
             raise ValueError('E-mail obrigatório')
         email = self.normalize_email(email)
-        user  = self.model(email=email, **extras)
+        user = self.model(email=email, **extras)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -20,29 +16,51 @@ class UsuarioManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extras):
         extras.setdefault('is_staff', True)
         extras.setdefault('is_superuser', True)
+        extras.setdefault('perfil', 'gestor')
         return self.create_user(email, password, **extras)
+
+
+class Role(models.Model):
+    """
+    Permissão/Papel customizado atribuível a um usuário.
+
+    Diferente do `perfil` (que define o tipo do usuário no domínio),
+    Role representa permissões granulares definidas pelo gestor.
+    """
+    nome = models.CharField(max_length=80, unique=True)
+    descricao = models.CharField(max_length=255, blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
 
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
     PERFIS = [
-        ('supervisor','Supervisor'),
-        ('morador','Morador'),
-        ('gestor','Gestor')
+        ('supervisor', 'Supervisor'),
+        ('morador', 'Morador'),
+        ('gestor', 'Gestor'),
     ]
 
-    email    = models.EmailField(unique=True)
-    cpf      = models.CharField(max_length=14, unique=True)
-    nome     = models.CharField(max_length=150)
-    perfil   = models.CharField(max_length=20, choices=PERFIS)
-    ativo    = models.BooleanField(default=True)
+    email = models.EmailField(unique=True)
+    cpf = models.CharField(max_length=14, unique=True)
+    nome = models.CharField(max_length=150)
+    perfil = models.CharField(max_length=20, choices=PERFIS)
+    ativo = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    roles = models.ManyToManyField(Role, blank=True, related_name='usuarios')
 
-    objects  = UsuarioManager()
+    objects = UsuarioManager()
 
-    USERNAME_FIELD  = 'email'
+    USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['cpf', 'nome', 'perfil']
 
     def __str__(self):
         return f"{self.nome} ({self.perfil})"
-    
+
+
 auditlog.register(Usuario)
+auditlog.register(Role)
