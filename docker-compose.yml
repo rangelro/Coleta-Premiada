@@ -51,7 +51,7 @@ services:
 
   core:
     build:
-      context: ./services/core
+      context: ./core
       target: development
     env_file: .env
     environment:
@@ -64,12 +64,11 @@ services:
         rabbitmq:
           condition: service_healthy
     volumes:
-      - ./services/core:/app
-      - ./infra:/app/infra
+      - ./core:/app
 
   core-consumer:
     build:
-      context: ./services/core
+      context: ./core
       target: development
     env_file: .env
     environment:
@@ -81,8 +80,7 @@ services:
         rabbitmq:
           condition: service_healthy
     volumes:
-      - ./services/core:/app
-      - ./infra:/app/infra
+      - ./core:/app
 
   # Grafana
   grafana:

@@ -1,7 +1,7 @@
 from rest_framework import generics
 from .models import Imovel
 from .serializers import ImovelSerializer
-from infra.rabbitmq.producer import publish_morador
+from messaging.producer import publish_morador
 
 # API para cadastro de imóvel (API porque vai receber cadastro via HTTP)
 class ImovelCreateAPIView(generics.CreateAPIView):

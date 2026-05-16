@@ -1,32 +1,20 @@
 import json
-import pika
-import os
 import logging
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from decimal import Decimal
+from messaging.connection import get_connection
 
 logger = logging.getLogger(__name__)
 
-# Consumer da fila RabbitMQ que recebe as pesagens e insere no banco do Core
 class Command(BaseCommand):
     help = 'Consome mensagens da fila RabbitMQ e registra as coletas no Core'
 
-    # Handle executa o consumer e fica aguardando mensagens
     def handle(self, *args, **options):
         self.stdout.write('Iniciando consumer da fila pesagens...')
 
-        credentials = pika.PlainCredentials(
-            os.getenv('RABBITMQ_DEFAULT_USER', 'guest'),
-            os.getenv('RABBITMQ_DEFAULT_PASS', 'guest'),
-        )
-        params = pika.ConnectionParameters(
-            host='rabbitmq', port=5672, credentials=credentials,
-            heartbeat=600, blocked_connection_timeout=300,
-        )
-
-        conexao = pika.BlockingConnection(params)
+        conexao = get_connection()
         canal = conexao.channel()
         canal.queue_declare(queue='fila.pesagens', durable=True)
         canal.basic_qos(prefetch_count=1)
