@@ -32,11 +32,6 @@ from .serializers import (
 )
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 
-try:
-    from messaging.producer import publish_morador
-except Exception:  # producer pode não estar disponível em testes
-    publish_morador = None
-
 
 # ---------------------------------------------------------------------------
 # IMÓVEIS  /properties/*
@@ -62,21 +57,7 @@ class ImovelListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        imovel = serializer.save()
-
-        if publish_morador is None:
-            return
-        try:
-            publish_morador({
-                'inscricao_imobiliaria': imovel.inscricao,
-                'nome': imovel.titular.nome,
-                'cpf': imovel.titular.cpf,
-                'endereco': f"{imovel.logradouro}, {imovel.numero} - {imovel.bairro}",
-                'acao': 'adesao_programa',
-            })
-        except Exception as e:
-            # Falha na fila não pode abortar a criação do imóvel.
-            print(f"Erro ao publicar na fila: {e}")
+        serializer.save()
 
 
 class ImovelDetailView(generics.RetrieveUpdateAPIView):

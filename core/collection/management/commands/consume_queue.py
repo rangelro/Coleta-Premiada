@@ -69,9 +69,10 @@ class Command(BaseCommand):
             coleta = RegistroColeta.objects.create(
                 id_microservico       = dados['id'],
                 imovel                = imovel,
-                inscricao_imobiliaria = dados['inscricao_imobiliaria'],
                 pontuacao             = pontuacao,
                 data_hora_coleta      = parse_datetime(dados['data_hora']),
+                material              = dados.get('material', ''),
+                peso_kg               = Decimal(str(dados.get('peso_kg', 0)))
             )
 
             # Atualiza o saldo do imóvel
@@ -80,7 +81,7 @@ class Command(BaseCommand):
                 saldo.save()
 
             self.stdout.write(
-                f"  Registrado: {coleta.inscricao_imobiliaria} "
+                f"  Registrado: {dados['inscricao_imobiliaria']} "
                 f"| {pontuacao} recebidos "
                 f"| {desconto_efetivo}% aplicados no saldo"
             )
