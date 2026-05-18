@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
@@ -14,17 +15,36 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Iniciando consumer da fila pesagens...')
 
-        conexao = get_connection()
-        canal = conexao.channel()
-        canal.queue_declare(queue='fila.pesagens', durable=True)
-        canal.basic_qos(prefetch_count=1)
-        canal.basic_consume(
-            queue='fila.pesagens',
-            on_message_callback=self._processar,
-        )
-
-        self.stdout.write('Aguardando mensagens. CTRL+C para sair.')
-        canal.start_consuming()
+        # Retry com backoff: tenta conectar até 10x antes de desistir
+        max_tentativas = 10
+        for tentativa in range(1, max_tentativas + 1):
+            try:
+                conexao = get_connection()
+                canal = conexao.channel()
+                canal.queue_declare(queue='fila.pesagens', durable=True)
+                canal.basic_qos(prefetch_count=1)
+                canal.basic_consume(
+                    queue='fila.pesagens',
+                    on_message_callback=self._processar,
+                )
+                self.stdout.write('Aguardando mensagens. CTRL+C para sair.')
+                canal.start_consuming()
+                break  # se chegou aqui, saiu do consuming normalmente (ex: CTRL+C)
+            except KeyboardInterrupt:
+                self.stdout.write('\nEncerrando consumer.')
+                break
+            except Exception as e:
+                espera = min(2 ** tentativa, 30)  # backoff: 2s, 4s, 8s... até 30s
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'  Tentativa {tentativa}/{max_tentativas} falhou: {e}. '
+                        f'Aguardando {espera}s...'
+                    )
+                )
+                if tentativa == max_tentativas:
+                    self.stdout.write(self.style.ERROR('Máximo de tentativas atingido. Encerrando.'))
+                    raise
+                time.sleep(espera)
 
     # Processa a mensagem recebida e faz o cadastro no core
     def _processar(self, ch, method, properties, body):
@@ -43,11 +63,22 @@ class Command(BaseCommand):
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            # Busca o imóvel pelo número de inscrição
+            # Busca o imóvel pelo ID do banco de dados (chave primária)
+            imovel_id = dados.get('imovel_id')
             imovel = Imovel.objects.filter(
-                inscricao=dados['inscricao_imobiliaria'],
+                id=imovel_id,
                 ativo=True
             ).first()
+
+            if imovel is None:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Imóvel id={imovel_id} não encontrado ou inativo. "
+                        f"Mensagem descartada."
+                    )
+                )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                return
 
             # Lê a pontuação já calculada do microserviço
             pontuacao = Decimal(str(dados.get('pontuacao', 0)))
@@ -69,9 +100,10 @@ class Command(BaseCommand):
             coleta = RegistroColeta.objects.create(
                 id_microservico       = dados['id'],
                 imovel                = imovel,
-                inscricao_imobiliaria = dados['inscricao_imobiliaria'],
                 pontuacao             = pontuacao,
                 data_hora_coleta      = parse_datetime(dados['data_hora']),
+                material              = dados.get('material', ''),
+                peso_kg               = Decimal(str(dados.get('peso_kg', 0)))
             )
 
             # Atualiza o saldo do imóvel
@@ -80,7 +112,7 @@ class Command(BaseCommand):
                 saldo.save()
 
             self.stdout.write(
-                f"  Registrado: {coleta.inscricao_imobiliaria} "
+                f"  Registrado: imovel_id={imovel_id} "
                 f"| {pontuacao} recebidos "
                 f"| {desconto_efetivo}% aplicados no saldo"
             )
