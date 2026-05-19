@@ -8,27 +8,28 @@ logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=Imovel)
-def publicar_adesao_programa(sender, instance, created, **kwargs):
+def publicar_imovel(sender, instance, created, **kwargs):
     """
     Signal disparado após salvar um Imovel.
 
-    Quando um imóvel é CRIADO (pela API, pelo Admin ou por qualquer outro meio),
-    publica automaticamente uma mensagem na fila `fila.moradores` para notificar
-    outros sistemas sobre a nova adesão ao programa.
+    Publica na fila `imoveis` tanto na criação quanto na atualização,
+    para manter o microserviço de coleta sincronizado.
     """
-    if not created:
-        return  # só publica na criação, não em updates
-
     try:
         from messaging.producer import publish_morador
         publish_morador({
             'inscricao_imobiliaria': instance.inscricao,
             'nome': instance.titular.nome,
             'cpf': instance.titular.cpf,
-            'endereco': f"{instance.logradouro}, {instance.numero} - {instance.bairro}",
-            'acao': 'adesao_programa',
+            'endereco': instance.logradouro,
+            'numero': instance.numero,
+            'complemento': instance.complemento or '',
+            'bairro': instance.bairro,
+            'ativo': instance.ativo,
+            'acao': 'adesao_programa' if created else 'atualizacao_imovel',
         })
-        logger.info(f"Adesão publicada na fila para o imóvel {instance.inscricao}")
+        acao_log = 'criação' if created else 'atualização'
+        logger.info(f"Imóvel publicado na fila ({acao_log}): {instance.inscricao}")
     except Exception as e:
         # Falha na fila NÃO deve reverter o salvamento do imóvel.
-        logger.error(f"Erro ao publicar adesão do imóvel {instance.inscricao} na fila: {e}")
+        logger.error(f"Erro ao publicar imóvel {instance.inscricao} na fila: {e}")
