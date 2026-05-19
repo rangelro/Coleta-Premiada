@@ -37,4 +37,4 @@ def publish_morador(morador_data: dict):
     """
     O Core publica quando um morador faz adesão via API.
     """
-    publish_message('fila.moradores', morador_data)
+    publish_message('imoveis', morador_data)

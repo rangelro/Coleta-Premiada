@@ -4,7 +4,6 @@ Class-Based Views do app `program`.
 Cobre:
 - /properties/*      CRUD de imóveis (e gerenciamento de moradores vinculados)
 - /programs/*        CRUD de programas
-- /programs/:id/materials   materiais aceitos no programa
 - /programs/:id/rules       regras configuráveis do programa
 - /consolidations/*  execução e consulta de consolidações de ciclo
 - /benefits/*        benefícios finais por imóvel
@@ -23,11 +22,11 @@ from accounts.permissions import IsGestor, IsGestorOrSupervisor, ReadOnlyOrGesto
 from accounts.models import Usuario
 
 from .models import (
-    Programa, Material, RegraPrograma,
+    Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
 )
 from .serializers import (
-    ProgramaSerializer, MaterialSerializer, RegraProgramaSerializer,
+    ProgramaSerializer, RegraProgramaSerializer,
     ImovelSerializer, SaldoPontosSerializer, ConsolidacaoSerializer,
 )
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
@@ -39,7 +38,7 @@ from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 class ImovelListCreateView(generics.ListCreateAPIView):
     """
     🔒 GET  /properties — lista imóveis (filtra pelo titular caso seja morador).
-    🔒 POST /properties — cria imóvel (gestor/supervisor) e publica adesão na fila.
+    🔒 POST /properties — cria imóvel e publica adesão na fila.
     """
     serializer_class = ImovelSerializer
 
@@ -52,8 +51,6 @@ class ImovelListCreateView(generics.ListCreateAPIView):
         return qs
 
     def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsGestorOrSupervisor()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
@@ -122,7 +119,7 @@ class ProgramaListCreateView(generics.ListCreateAPIView):
     🔒 POST /programs — cria programa (somente gestor).
     """
     serializer_class = ProgramaSerializer
-    queryset = Programa.objects.all().prefetch_related('materiais', 'regras')
+    queryset = Programa.objects.all().prefetch_related('regras')
     permission_classes = [ReadOnlyOrGestor]
 
 
@@ -132,24 +129,9 @@ class ProgramaDetailView(generics.RetrieveUpdateAPIView):
     🔒 PATCH /programs/:id — atualiza um programa (gestor).
     """
     serializer_class = ProgramaSerializer
-    queryset = Programa.objects.all().prefetch_related('materiais', 'regras')
+    queryset = Programa.objects.all().prefetch_related('regras')
     permission_classes = [ReadOnlyOrGestor]
 
-
-class ProgramaMaterialsView(generics.ListCreateAPIView):
-    """
-    🔒 GET  /programs/:id/materials — lista materiais válidos do programa.
-    🔒 POST /programs/:id/materials — adiciona um material (gestor).
-    """
-    serializer_class = MaterialSerializer
-    permission_classes = [ReadOnlyOrGestor]
-
-    def get_queryset(self):
-        return Material.objects.filter(programa_id=self.kwargs['id'])
-
-    def perform_create(self, serializer):
-        programa = get_object_or_404(Programa, pk=self.kwargs['id'])
-        serializer.save(programa=programa)
 
 
 class ProgramaRulesView(APIView):
@@ -335,19 +317,6 @@ class ReportParticipationView(APIView):
         )
         return Response(list(participantes))
 
-
-class ReportMaterialsView(APIView):
-    """🔒 GET /reports/materials — totais por material aceito no programa."""
-    permission_classes = [IsGestorOrSupervisor]
-
-    def get(self, request):
-        # O Core não armazena tipo do material (vem do microserviço).
-        # Aqui devolvemos materiais cadastrados por programa.
-        dados = (
-            Material.objects.values('programa__nome', 'nome', 'fator_pontuacao', 'ativo')
-            .order_by('programa__nome', 'nome')
-        )
-        return Response(list(dados))
 
 
 class ReportRankingView(APIView):

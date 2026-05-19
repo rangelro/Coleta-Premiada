@@ -3,10 +3,10 @@ from .views import (
     ImovelListCreateView, ImovelDetailView,
     ImovelAddUserView, ImovelRemoveUserView,
     ProgramaListCreateView, ProgramaDetailView,
-    ProgramaMaterialsView, ProgramaRulesView,
+    ProgramaRulesView,
     ConsolidacaoRunView, ConsolidacaoListView, ConsolidacaoDetailView,
     BeneficioListView, BeneficioDetailView,
-    ReportParticipationView, ReportMaterialsView,
+    ReportParticipationView,
     ReportRankingView, ReportImpactView,
 )
 
@@ -21,7 +21,6 @@ urlpatterns = [
     # /programs
     path('programs',                   ProgramaListCreateView.as_view(), name='programa-list-create'),
     path('programs/<int:pk>',          ProgramaDetailView.as_view(),     name='programa-detail'),
-    path('programs/<int:id>/materials', ProgramaMaterialsView.as_view(), name='programa-materials'),
     path('programs/<int:id>/rules',    ProgramaRulesView.as_view(),      name='programa-rules'),
 
     # /consolidations
@@ -35,7 +34,6 @@ urlpatterns = [
 
     # /reports
     path('reports/participation',      ReportParticipationView.as_view(), name='report-participation'),
-    path('reports/materials',          ReportMaterialsView.as_view(),     name='report-materials'),
     path('reports/ranking',            ReportRankingView.as_view(),       name='report-ranking'),
     path('reports/impact',             ReportImpactView.as_view(),        name='report-impact'),
 ]

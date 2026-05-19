@@ -23,24 +23,6 @@ class Programa(models.Model):
         return f"{self.nome} ({self.data_inicio:%Y})"
 
 
-class Material(models.Model):
-    """Material aceito por um Programa, com o fator de pontuação por kg."""
-    programa = models.ForeignKey(Programa, on_delete=models.CASCADE, related_name='materiais')
-    nome = models.CharField(max_length=80)
-    fator_pontuacao = models.DecimalField(
-        max_digits=6, decimal_places=3,
-        validators=[MinValueValidator(0)],
-        help_text='Pontuação por kg coletado',
-    )
-    ativo = models.BooleanField(default=True)
-
-    class Meta:
-        unique_together = ('programa', 'nome')
-        ordering = ['programa', 'nome']
-
-    def __str__(self):
-        return f"{self.programa.nome} / {self.nome}"
-
 
 class RegraPrograma(models.Model):
     """Regras configuráveis (chave/valor) associadas a um Programa."""
@@ -61,15 +43,6 @@ class RegraPrograma(models.Model):
 
 class Imovel(models.Model):
     """Unidade imobiliária participante."""
-    MATERIAIS = [
-        ('papel', 'Papel/Papelão'),
-        ('plastico', 'Plástico'),
-        ('aluminio', 'Alumínio'),
-        ('vidro', 'Vidro'),
-        ('metal', 'Metal'),
-        ('eletronico', 'Eletrônico'),
-    ]
-
     inscricao = models.CharField(max_length=50, unique=True)
     titular = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -146,7 +119,6 @@ class Consolidacao(models.Model):
 
 
 auditlog.register(Programa)
-auditlog.register(Material)
 auditlog.register(RegraPrograma)
 auditlog.register(Imovel)
 auditlog.register(SaldoPontos)

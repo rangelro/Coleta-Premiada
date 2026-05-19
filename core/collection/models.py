@@ -17,7 +17,6 @@ class RegistroColeta(models.Model):
         help_text='Pontuação já calculada recebida do microserviço',
     )
     data_hora_coleta = models.DateTimeField(null=True, blank=True)
-    material = models.CharField(max_length=30, blank=True)
     peso_kg = models.DecimalField(max_digits=8, decimal_places=3, default=0)
 
     class Meta:

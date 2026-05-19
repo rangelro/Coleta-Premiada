@@ -21,10 +21,10 @@ class Command(BaseCommand):
             try:
                 conexao = get_connection()
                 canal = conexao.channel()
-                canal.queue_declare(queue='fila.pesagens', durable=True)
+                canal.queue_declare(queue='coletas', durable=True)
                 canal.basic_qos(prefetch_count=1)
                 canal.basic_consume(
-                    queue='fila.pesagens',
+                    queue='coletas',
                     on_message_callback=self._processar,
                 )
                 self.stdout.write('Aguardando mensagens. CTRL+C para sair.')
@@ -54,26 +54,24 @@ class Command(BaseCommand):
 
         try:
             dados = json.loads(body)
-            self.stdout.write(f"Processando: {dados['id']}")
+            coleta_id = dados['coleta_id']
+            self.stdout.write(f"Processando: {coleta_id}")
 
             # ignora se já foi processado
-            if RegistroColeta.objects.filter(
-                    id_microservico=dados['id']).exists():
-                self.stdout.write(f"  Duplicado ignorado: {dados['id']}")
+            if RegistroColeta.objects.filter(id_microservico=coleta_id).exists():
+                self.stdout.write(f"  Duplicado ignorado: {coleta_id}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            # Busca o imóvel pelo ID do banco de dados (chave primária)
-            imovel_id = dados.get('imovel_id')
-            imovel = Imovel.objects.filter(
-                id=imovel_id,
-                ativo=True
-            ).first()
+            # Busca o imóvel pela inscrição (identificador de domínio compartilhado
+            # com o microserviço, que não conhece a PK inteira do Postgres).
+            inscricao = dados.get('inscricao_imobiliaria')
+            imovel = Imovel.objects.filter(inscricao=inscricao, ativo=True).first()
 
             if imovel is None:
                 self.stdout.write(
                     self.style.WARNING(
-                        f"  Imóvel id={imovel_id} não encontrado ou inativo. "
+                        f"  Imóvel inscricao={inscricao} não encontrado ou inativo. "
                         f"Mensagem descartada."
                     )
                 )
@@ -83,38 +81,33 @@ class Command(BaseCommand):
             # Lê a pontuação já calculada do microserviço
             pontuacao = Decimal(str(dados.get('pontuacao', 0)))
 
-            # Aplica o teto de 40% se o imóvel estiver cadastrado
-            desconto_efetivo = pontuacao
-            ano_atual = timezone.now().year
-
-            if imovel:
-                saldo, _ = SaldoPontos.objects.get_or_create(
-                    imovel=imovel, ciclo=ano_atual,
-                    defaults={'desconto_percentual': 0}
-                )
-                desconto_efetivo = aplicar_teto(
-                    saldo.desconto_percentual, pontuacao
-                )
+            # Aplica o teto de 40% no ciclo mensal (MM-YYYY)
+            ciclo_atual = timezone.now().strftime('%m-%Y')
+            saldo, _ = SaldoPontos.objects.get_or_create(
+                imovel=imovel, ciclo=ciclo_atual,
+                defaults={'desconto_percentual': 0}
+            )
+            desconto_efetivo = aplicar_teto(saldo.desconto_percentual, pontuacao)
 
             # Persiste o registro no PostgreSQL
-            coleta = RegistroColeta.objects.create(
-                id_microservico       = dados['id'],
-                imovel                = imovel,
-                pontuacao             = pontuacao,
-                data_hora_coleta      = parse_datetime(dados['data_hora']),
-                material              = dados.get('material', ''),
-                peso_kg               = Decimal(str(dados.get('peso_kg', 0)))
+            data_hora_raw = dados.get('data_hora')
+            RegistroColeta.objects.create(
+                id_microservico  = coleta_id,
+                imovel           = imovel,
+                pontuacao        = pontuacao,
+                data_hora_coleta = parse_datetime(data_hora_raw) if data_hora_raw else None,
+                peso_kg          = Decimal(str(dados.get('peso_total_kg', 0))),
             )
 
             # Atualiza o saldo do imóvel
-            if imovel and desconto_efetivo > 0:
+            if desconto_efetivo > 0:
                 saldo.desconto_percentual += desconto_efetivo
                 saldo.save()
 
             self.stdout.write(
-                f"  Registrado: imovel_id={imovel_id} "
-                f"| {pontuacao} recebidos "
-                f"| {desconto_efetivo}% aplicados no saldo"
+                f"  Registrado: inscricao={inscricao} (id={imovel.id}) "
+                f"| {pontuacao} pts recebidos "
+                f"| {desconto_efetivo}% aplicados no saldo ({ciclo_atual})"
             )
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -122,5 +115,8 @@ class Command(BaseCommand):
             logger.error(f"Mensagem malformada ignorada: {e}")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         except Exception as e:
-            logger.error(f"Erro ao processar mensagem: {e}")
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            # Erros de aplicação (payload inválido, FK errada, etc.) não são
+            # transientes — re-enfileirar causa loop infinito. Descarta a
+            # mensagem (idealmente uma DLQ seria configurada aqui).
+            logger.error(f"Erro ao processar mensagem (descartando): {e}")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

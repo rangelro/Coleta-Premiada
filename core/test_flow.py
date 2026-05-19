@@ -62,12 +62,11 @@ def run_test():
     id_pesagem = f"test_flow_{int(time.time())}"
 
     payload = {
-        "id": id_pesagem,
-        "imovel_id": imovel.id,         # <-- chave primária do banco
+        "coleta_id": id_pesagem,
+        "imovel_id": imovel.id,
         "pontuacao": 18.0,
         "data_hora": timezone.now().isoformat(),
-        "material": "Plástico",
-        "peso_kg": 2.5,
+        "peso_total_kg": 2.5,
     }
 
     print(f"\n  [→] Publicando pesagem na fila: id={id_pesagem}, imovel_id={imovel.id}")
@@ -87,7 +86,7 @@ def run_test():
     coleta = RegistroColeta.objects.filter(id_microservico=id_pesagem).first()
     if coleta:
         print(f"  [✓] SUCESSO — RegistroColeta criado! ID={coleta.id}, "
-              f"Material={coleta.material}, Pontos={coleta.pontuacao}")
+              f"Pontos={coleta.pontuacao}")
     else:
         print("  [✗] FALHA — RegistroColeta NÃO encontrado no banco.")
 

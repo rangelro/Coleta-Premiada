@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Programa, Material, RegraPrograma,
+    Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
 )
 
@@ -23,12 +23,6 @@ class ImovelSerializer(serializers.ModelSerializer):
         return value
 
 
-class MaterialSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Material
-        fields = ['id', 'programa', 'nome', 'fator_pontuacao', 'ativo']
-        read_only_fields = ['id']
-
 
 class RegraProgramaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,14 +31,13 @@ class RegraProgramaSerializer(serializers.ModelSerializer):
 
 
 class ProgramaSerializer(serializers.ModelSerializer):
-    materiais = MaterialSerializer(many=True, read_only=True)
     regras = RegraProgramaSerializer(read_only=True)
 
     class Meta:
         model = Programa
         fields = [
             'id', 'nome', 'descricao', 'data_inicio', 'data_fim',
-            'ativo', 'desconto_maximo', 'materiais', 'regras',
+            'ativo', 'desconto_maximo', 'regras',
         ]
         read_only_fields = ['id']
 
