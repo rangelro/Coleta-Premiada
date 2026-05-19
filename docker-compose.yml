@@ -8,22 +8,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
-  # Banco de dados do Microserviço de Coleta
-  mongodb:
-    image: mongo:7
-    env_file: .env
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Fila de mensagens assíncrona
   rabbitmq:
@@ -37,6 +29,11 @@ services:
       - "15672:15672" # painel de administração
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Armazenamento de fotos (espelha o S3 localmente)
   minio:
@@ -52,8 +49,59 @@ services:
     volumes:
       - minio_data:/data
 
+  core:
+    build:
+      context: ./core
+      target: development
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./core:/app
+
+  core-consumer:
+    build:
+      context: ./core
+      target: development
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq
+    command: python manage.py consume_queue
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./core:/app
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: coleta-premiada-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
-  mongo_data:
   rabbitmq_data:
   minio_data:
+  grafana-data:
