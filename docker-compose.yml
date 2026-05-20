@@ -11,8 +11,10 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - coleta-shared
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,12 +27,14 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
-      - "5672:5672" # porta da fila
+      - "5672:5672"   # porta da fila
       - "15672:15672" # painel de administração
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - coleta-shared
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,41 +52,49 @@ services:
       - "9001:9001" # painel de administração
     volumes:
       - minio_data:/data
+    networks:
+      - coleta-shared
 
   core:
     build:
-      context: ./services/core
+      context: ./core
       target: development
     env_file: .env
     environment:
       POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
-        postgres:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
-      - ./services/core:/app
-      - ./infra:/app/infra
+      - ./core:/app
+    networks:
+      - coleta-shared
 
   core-consumer:
     build:
-      context: ./services/core
+      context: ./core
       target: development
     env_file: .env
     environment:
       POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq
     command: python manage.py consume_queue
     depends_on:
-        postgres:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
-      - ./services/core:/app
-      - ./infra:/app/infra
+      - ./core:/app
+    networks:
+      - coleta-shared
 
   # Grafana
   grafana:
@@ -97,9 +109,16 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - postgres
+    networks:
+      - coleta-shared
 
 volumes:
   postgres_data:
   rabbitmq_data:
   minio_data:
   grafana-data:
+
+networks:
+  coleta-shared:
+    name: coleta-shared
+    driver: bridge
