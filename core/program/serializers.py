@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import (
     Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
+    ConstantePontuacao,
 )
 
 
@@ -53,7 +54,7 @@ class ProgramaSerializer(serializers.ModelSerializer):
 class SaldoPontosSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaldoPontos
-        fields = ['id', 'imovel', 'ciclo', 'desconto_percentual', 'atualizado']
+        fields = ['id', 'imovel', 'programa', 'ciclo', 'desconto_percentual', 'atualizado']
         read_only_fields = ['id', 'atualizado']
 
 
@@ -68,3 +69,10 @@ class ConsolidacaoSerializer(serializers.ModelSerializer):
             'id', 'executada_em', 'executada_por', 'status',
             'total_imoveis', 'total_pontos',
         ]
+
+
+class ConstantePontuacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConstantePontuacao
+        fields = ['pontos_por_kg', 'atualizado_em', 'atualizado_por']
+        read_only_fields = ['atualizado_em', 'atualizado_por']

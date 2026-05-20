@@ -18,16 +18,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from accounts.permissions import IsGestor, IsGestorOrSupervisor, ReadOnlyOrGestor
+from accounts.permissions import IsGestor, IsGestorOrSupervisor, IsSupervisor, ReadOnlyOrGestor
 from accounts.models import Usuario
 
 from .models import (
     Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
+    ConstantePontuacao,
 )
 from .serializers import (
     ProgramaSerializer, RegraProgramaSerializer,
     ImovelSerializer, SaldoPontosSerializer, ConsolidacaoSerializer,
+    ConstantePontuacaoSerializer,
 )
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 
@@ -207,7 +209,7 @@ class ConsolidacaoRunView(APIView):
                 novo_desconto = (pontos / regras.pontos_por_real).quantize(Decimal('0.01'))
 
                 saldo, _ = SaldoPontos.objects.get_or_create(
-                    imovel_id=imovel_id, ciclo=ciclo,
+                    imovel_id=imovel_id, programa=programa, ciclo=ciclo,
                     defaults={'desconto_percentual': Decimal('0')},
                 )
                 aplicavel = aplicar_teto(saldo.desconto_percentual, novo_desconto)
@@ -263,33 +265,29 @@ class BeneficioListView(generics.ListAPIView):
 
 class BeneficioDetailView(APIView):
     """
-    🔒 GET /benefits/:propertyId — retorna o benefício final do imóvel.
+    🔒 GET /benefits/:propertyId/:programaId — benefícios do imóvel em um programa.
 
-    Soma o desconto entre todos os ciclos do imóvel e aplica o teto absoluto.
+    Retorna a lista completa de saldos por ciclo e o desconto total acumulado.
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, propertyId):
+    def get(self, request, propertyId, programaId):
         imovel = get_object_or_404(Imovel, pk=propertyId)
+        programa = get_object_or_404(Programa, pk=programaId)
 
-        # Morador só pode acessar seus próprios benefícios.
         if request.user.perfil == 'morador' and imovel.titular_id != request.user.id:
             return Response({'detail': 'Sem permissão.'}, status=403)
-
-        total = (
-            SaldoPontos.objects.filter(imovel=imovel)
-            .aggregate(total=Sum('desconto_percentual'))['total'] or Decimal('0')
-        )
-        teto = imovel.titular.imoveis.first()  # placeholder; usaremos DESCONTO_MAXIMO
-        desconto_final = min(Decimal(total), DESCONTO_MAXIMO)
+        print(SaldoPontos.objects.filter(programa=programa))
+        saldos = SaldoPontos.objects.filter(imovel=imovel, programa=programa)
+        total = saldos.aggregate(total=Sum('desconto_percentual'))['total'] or Decimal('0')
+        desconto_final = min(Decimal(total), programa.desconto_maximo)
 
         return Response({
             'imovel': imovel.inscricao,
             'titular': imovel.titular.nome,
+            'programa': programa.nome,
             'desconto_total_percentual': str(desconto_final),
-            'saldos_por_ciclo': SaldoPontosSerializer(
-                SaldoPontos.objects.filter(imovel=imovel), many=True
-            ).data,
+            'saldos_por_ciclo': SaldoPontosSerializer(saldos, many=True).data,
         })
 
 
@@ -357,3 +355,29 @@ class ReportImpactView(APIView):
             'total_imoveis_participantes': total_imoveis_participantes,
             'soma_desconto_percentual': str(total_desconto_concedido),
         })
+
+
+# ---------------------------------------------------------------------------
+# CONSTANTE DE PONTUAÇÃO  /scoring-constant
+# ---------------------------------------------------------------------------
+class ConstantePontuacaoView(APIView):
+    """
+    🔒 GET   /scoring-constant — leitura da constante (qualquer autenticado).
+    🔒 PATCH /scoring-constant — atualiza a constante (somente supervisor).
+    """
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return [IsSupervisor()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        constante = ConstantePontuacao.get_valor()
+        return Response(ConstantePontuacaoSerializer(constante).data)
+
+    def patch(self, request):
+        constante = ConstantePontuacao.get_valor()
+        serializer = ConstantePontuacaoSerializer(constante, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(atualizado_por=request.user)
+        return Response(serializer.data)

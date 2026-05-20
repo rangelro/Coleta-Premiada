@@ -74,6 +74,9 @@ class Imovel(models.Model):
 class SaldoPontos(models.Model):
     """Saldo acumulado de desconto no IPTU por imóvel no ciclo (mensal)."""
     imovel = models.ForeignKey(Imovel, on_delete=models.PROTECT, related_name='saldos')
+    programa = models.ForeignKey(
+        Programa, on_delete=models.PROTECT, related_name='saldos', null=True, blank=True,
+    )
     ciclo = models.CharField(max_length=7, help_text='Mês de apuração (MM-YYYY)')
     desconto_percentual = models.DecimalField(
         max_digits=5, decimal_places=2, default=0,
@@ -82,7 +85,7 @@ class SaldoPontos(models.Model):
     atualizado = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('imovel', 'ciclo')
+        unique_together = ('imovel', 'programa', 'ciclo')
 
     def __str__(self):
         return f"{self.imovel.inscricao} | {self.ciclo} | {self.desconto_percentual}%"
@@ -118,8 +121,39 @@ class Consolidacao(models.Model):
         return f"Consolidação {self.programa.nome} ({self.status})"
 
 
+class ConstantePontuacao(models.Model):
+    """
+    Singleton que define quantos pontos cada kg de material reciclável gera.
+    Editável apenas por supervisor via API.
+    """
+    pontos_por_kg = models.DecimalField(
+        max_digits=8, decimal_places=4, default='1.5000',
+        help_text='Pontos gerados por kg coletado (peso × constante = pontuação)',
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+    atualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='constantes_pontuacao_atualizadas',
+    )
+
+    class Meta:
+        verbose_name = 'constante de pontuação'
+        verbose_name_plural = 'constante de pontuação'
+
+    def __str__(self):
+        return f"{self.pontos_por_kg} pts/kg"
+
+    @classmethod
+    def get_valor(cls) -> 'ConstantePontuacao':
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 auditlog.register(Programa)
 auditlog.register(RegraPrograma)
 auditlog.register(Imovel)
 auditlog.register(SaldoPontos)
 auditlog.register(Consolidacao)
+auditlog.register(ConstantePontuacao)
