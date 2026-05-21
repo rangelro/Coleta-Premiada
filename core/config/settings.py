@@ -10,6 +10,11 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'chave-local-insegura')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
+# Tenta carregar o .env da pasta raiz do projeto primeiro
+load_dotenv(BASE_DIR.parent / '.env')
+# Em seguida, carrega da pasta core (se existir, tem prioridade)
+load_dotenv(BASE_DIR / '.env')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -49,7 +54,7 @@ DATABASES = {
         'USER':     os.getenv('POSTGRES_USER',     'coleta_user'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'coleta_senha_local'),
         'HOST':     os.getenv('POSTGRES_HOST',     'localhost'),
-        'PORT':     os.getenv('POSTGRES_PORT',     '5432'),
+        'PORT':     os.getenv('POSTGRES_PORT',     '5433'),
     }
 }
 
