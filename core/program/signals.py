@@ -25,6 +25,8 @@ def publicar_imovel(sender, instance, created, **kwargs):
             'numero': instance.numero,
             'complemento': instance.complemento or '',
             'bairro': instance.bairro,
+            'latitude': float(instance.latitude) if instance.latitude is not None else None,
+            'longitude': float(instance.longitude) if instance.longitude is not None else None,
             'ativo': instance.ativo,
             'acao': 'adesao_programa' if created else 'atualizacao_imovel',
         })
