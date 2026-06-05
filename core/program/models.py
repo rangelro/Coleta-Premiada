@@ -64,6 +64,8 @@ class Imovel(models.Model):
     cidade = models.CharField(max_length=100)
     estado = models.CharField(max_length=2, help_text='Sigla do estado (UF)')
     num_moradores = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     ativo = models.BooleanField(default=True)
     data_adesao = models.DateField(auto_now_add=True)
 

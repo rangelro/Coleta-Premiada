@@ -12,6 +12,7 @@ class ImovelSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'inscricao', 'titular', 'cep', 'logradouro', 'numero',
             'complemento', 'bairro', 'cidade', 'estado', 'num_moradores',
+            'latitude', 'longitude',
             'ativo', 'data_adesao',
         ]
         read_only_fields = ['id', 'data_adesao']
