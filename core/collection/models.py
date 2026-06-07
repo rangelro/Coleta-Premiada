@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from auditlog.registry import auditlog
-from program.models import Imovel
+from program.models import Imovel, Programa
 
 
 class RegistroColeta(models.Model):
@@ -12,9 +12,14 @@ class RegistroColeta(models.Model):
         help_text='ID gerado pelo microserviço (MongoDB)',
     )
     imovel = models.ForeignKey(Imovel, on_delete=models.PROTECT, related_name='coletas')
+    programa = models.ForeignKey(
+        Programa, on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name='coletas',
+    )
     pontuacao = models.DecimalField(
         max_digits=8, decimal_places=2, default=0,
-        help_text='Pontuação já calculada recebida do microserviço',
+        help_text='Pontuação calculada no core: peso_kg × ConstantePontuacao.pontos_por_kg',
     )
     data_hora_coleta = models.DateTimeField(null=True, blank=True)
     peso_kg = models.DecimalField(max_digits=8, decimal_places=3, default=0)

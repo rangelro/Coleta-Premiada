@@ -8,6 +8,7 @@ from .views import (
     BeneficioListView, BeneficioDetailView,
     ReportParticipationView,
     ReportRankingView, ReportImpactView,
+    ConstantePontuacaoView,
 )
 
 urlpatterns = [
@@ -30,10 +31,13 @@ urlpatterns = [
 
     # /benefits
     path('benefits',                   BeneficioListView.as_view(),   name='benefit-list'),
-    path('benefits/<int:propertyId>',  BeneficioDetailView.as_view(), name='benefit-detail'),
+    path('benefits/<int:propertyId>/<int:programaId>', BeneficioDetailView.as_view(), name='benefit-detail'),
 
     # /reports
     path('reports/participation',      ReportParticipationView.as_view(), name='report-participation'),
     path('reports/ranking',            ReportRankingView.as_view(),       name='report-ranking'),
     path('reports/impact',             ReportImpactView.as_view(),        name='report-impact'),
+
+    # /scoring-constant
+    path('scoring-constant',           ConstantePontuacaoView.as_view(),  name='scoring-constant'),
 ]

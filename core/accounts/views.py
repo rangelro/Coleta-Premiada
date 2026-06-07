@@ -71,8 +71,8 @@ class AuthMeView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class AuthCreateView(generics.CreateAPIView):
-    """🔒 POST /auth — cria um novo usuário (gestor ou supervisor)."""
-    permission_classes = [IsGestorOrSupervisor]
+    """POST /auth — cria um novo usuário."""
+    permission_classes = [AllowAny]
     serializer_class = UsuarioCreateSerializer
     queryset = Usuario.objects.all()
 

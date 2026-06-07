@@ -8,27 +8,38 @@ logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=Imovel)
-def publicar_adesao_programa(sender, instance, created, **kwargs):
-    """
-    Signal disparado após salvar um Imovel.
-
-    Quando um imóvel é CRIADO (pela API, pelo Admin ou por qualquer outro meio),
-    publica automaticamente uma mensagem na fila `fila.moradores` para notificar
-    outros sistemas sobre a nova adesão ao programa.
-    """
-    if not created:
-        return  # só publica na criação, não em updates
-
+def publicar_imovel(sender, instance, created, **kwargs):
     try:
         from messaging.producer import publish_morador
         publish_morador({
             'inscricao_imobiliaria': instance.inscricao,
             'nome': instance.titular.nome,
             'cpf': instance.titular.cpf,
-            'endereco': f"{instance.logradouro}, {instance.numero} - {instance.bairro}",
-            'acao': 'adesao_programa',
+            'endereco': instance.logradouro,
+            'numero': instance.numero,
+            'complemento': instance.complemento or '',
+            'bairro': instance.bairro,
+            'latitude': float(instance.latitude) if instance.latitude is not None else None,
+            'longitude': float(instance.longitude) if instance.longitude is not None else None,
+            'ativo': instance.ativo,
+            'acao': 'adesao_programa' if created else 'atualizacao_imovel',
         })
-        logger.info(f"Adesão publicada na fila para o imóvel {instance.inscricao}")
+        acao_log = 'criação' if created else 'atualização'
+        logger.info(f"Imóvel publicado na fila ({acao_log}): {instance.inscricao}")
     except Exception as e:
-        # Falha na fila NÃO deve reverter o salvamento do imóvel.
-        logger.error(f"Erro ao publicar adesão do imóvel {instance.inscricao} na fila: {e}")
+        logger.error(f"Erro ao publicar imóvel {instance.inscricao} na fila: {e}")
+
+    # Agenda geocodificação somente se coordenadas ausentes e sem falha registrada
+    if (
+        instance.latitude is None
+        and instance.longitude is None
+        and not instance.geocodificacao_falhou
+    ):
+        try:
+            from .tasks import geocodificar_imovel
+            geocodificar_imovel.delay(instance.pk)
+            logger.info(f"Geocodificação agendada para imóvel: {instance.inscricao}")
+        except Exception as e:
+            logger.error(
+                f"Erro ao agendar geocodificação do imóvel {instance.inscricao}: {e}"
+            )
