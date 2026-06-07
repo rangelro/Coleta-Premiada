@@ -66,6 +66,7 @@ class Imovel(models.Model):
     num_moradores = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geocodificacao_falhou = models.BooleanField(default=False)
     ativo = models.BooleanField(default=True)
     data_adesao = models.DateField(auto_now_add=True)
 

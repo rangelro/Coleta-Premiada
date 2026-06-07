@@ -12,10 +12,10 @@ class ImovelSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'inscricao', 'titular', 'cep', 'logradouro', 'numero',
             'complemento', 'bairro', 'cidade', 'estado', 'num_moradores',
-            'latitude', 'longitude',
+            'latitude', 'longitude', 'geocodificacao_falhou',
             'ativo', 'data_adesao',
         ]
-        read_only_fields = ['id', 'data_adesao']
+        read_only_fields = ['id', 'data_adesao', 'latitude', 'longitude', 'geocodificacao_falhou']
 
     def validate_titular(self, value):
         if getattr(value, 'perfil', None) != 'morador':

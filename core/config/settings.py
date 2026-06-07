@@ -107,3 +107,22 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 STATIC_URL = 'static/'
+
+# ---------------------------------------------------------------------------
+# Celery — broker = mesmo RabbitMQ usado pelo messaging
+# ---------------------------------------------------------------------------
+_rmq_user = os.getenv('RABBITMQ_DEFAULT_USER', 'guest')
+_rmq_pass = os.getenv('RABBITMQ_DEFAULT_PASS', 'guest')
+_rmq_host = os.getenv('RABBITMQ_HOST', 'localhost')
+_rmq_port = os.getenv('RABBITMQ_PORT', '5672')
+
+CELERY_BROKER_URL = os.getenv(
+    'CELERY_BROKER_URL',
+    f'amqp://{_rmq_user}:{_rmq_pass}@{_rmq_host}:{_rmq_port}/',
+)
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# User-agent enviado ao Nominatim — deve identificar o projeto
+NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')

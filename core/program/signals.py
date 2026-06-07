@@ -9,12 +9,6 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Imovel)
 def publicar_imovel(sender, instance, created, **kwargs):
-    """
-    Signal disparado após salvar um Imovel.
-
-    Publica na fila `imoveis` tanto na criação quanto na atualização,
-    para manter o microserviço de coleta sincronizado.
-    """
     try:
         from messaging.producer import publish_morador
         publish_morador({
@@ -33,5 +27,19 @@ def publicar_imovel(sender, instance, created, **kwargs):
         acao_log = 'criação' if created else 'atualização'
         logger.info(f"Imóvel publicado na fila ({acao_log}): {instance.inscricao}")
     except Exception as e:
-        # Falha na fila NÃO deve reverter o salvamento do imóvel.
         logger.error(f"Erro ao publicar imóvel {instance.inscricao} na fila: {e}")
+
+    # Agenda geocodificação somente se coordenadas ausentes e sem falha registrada
+    if (
+        instance.latitude is None
+        and instance.longitude is None
+        and not instance.geocodificacao_falhou
+    ):
+        try:
+            from .tasks import geocodificar_imovel
+            geocodificar_imovel.delay(instance.pk)
+            logger.info(f"Geocodificação agendada para imóvel: {instance.inscricao}")
+        except Exception as e:
+            logger.error(
+                f"Erro ao agendar geocodificação do imóvel {instance.inscricao}: {e}"
+            )

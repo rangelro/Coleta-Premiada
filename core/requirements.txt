@@ -7,3 +7,5 @@ psycopg2-binary==2.9.12
 PyJWT==2.12.1
 python-dotenv==1.2.2
 django-auditlog==3.4.1
+geopy==2.4.1
+celery==5.4.0

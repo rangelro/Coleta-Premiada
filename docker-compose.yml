@@ -76,6 +76,26 @@ services:
     networks:
       - coleta-shared
 
+  core-celery:
+    build:
+      context: ./core
+      target: development
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq
+    command: celery -A config worker --loglevel=info --concurrency=2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./core:/app
+    networks:
+      - coleta-shared
+
   core-consumer:
     build:
       context: ./core

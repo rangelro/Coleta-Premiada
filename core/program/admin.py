@@ -33,9 +33,13 @@ class ProgramaAdmin(admin.ModelAdmin):
 
 @admin.register(Imovel)
 class ImovelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'inscricao', 'titular', 'cidade', 'estado', 'num_moradores', 'ativo')
+    list_display = (
+        'id', 'inscricao', 'titular', 'cidade', 'estado',
+        'num_moradores', 'latitude', 'longitude', 'geocodificacao_falhou', 'ativo',
+    )
     search_fields = ('inscricao',)
-    list_filter = ('ativo',)
+    list_filter = ('ativo', 'geocodificacao_falhou')
+    readonly_fields = ('latitude', 'longitude', 'geocodificacao_falhou')
 
 
 @admin.register(SaldoPontos)
