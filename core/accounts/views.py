@@ -7,7 +7,9 @@ Cobre:
 - /roles/*      CRUD de papéis (permissões)
 - /me/*         portal do cidadão (histórico, pontos, benefícios, programa)
 """
+from django.db.models import Q
 from rest_framework import generics, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -18,9 +20,10 @@ from .serializers import (
     UsuarioSerializer,
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
+    UsuarioManagerUpdateSerializer,
     RoleSerializer,
 )
-from .permissions import IsGestor, IsGestorOrSupervisor
+from .permissions import IsGestor
 
 
 # ---------------------------------------------------------------------------
@@ -78,20 +81,80 @@ class AuthCreateView(generics.CreateAPIView):
 
 
 # ---------------------------------------------------------------------------
-# USUÁRIOS  /users/*
+# GERENCIAMENTO DE USUÁRIOS (GESTORES)  /users/*
 # ---------------------------------------------------------------------------
-class UsuarioListView(generics.ListAPIView):
-    """🔒 GET /users — busca todos os usuários (gestor/supervisor)."""
-    permission_classes = [IsGestorOrSupervisor]
-    serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.filter(ativo=True).order_by('nome')
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
-class UsuarioDetailView(generics.RetrieveAPIView):
-    """🔒 GET /users/:id — busca um único usuário."""
-    permission_classes = [IsAuthenticated]
-    serializer_class = UsuarioSerializer
+class UserManagerView(generics.ListCreateAPIView):
+    """
+    🔒 GET  /users — Lista, filtra e pagina usuários (só Gestor).
+    🔒 POST /users — Cria um novo usuário com qualquer perfil (só Gestor).
+    """
+    permission_classes = [IsGestor]
+    pagination_class = StandardResultsSetPagination
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return UsuarioCreateSerializer
+        return UsuarioSerializer
+
+    def get_queryset(self):
+        queryset = Usuario.objects.all().order_by('nome')
+        
+        # Filtros
+        perfil = self.request.query_params.get('perfil')
+        if perfil:
+            queryset = queryset.filter(perfil=perfil)
+
+        ativo_str = self.request.query_params.get('ativo')
+        if ativo_str:
+            if ativo_str.lower() == 'true':
+                queryset = queryset.filter(ativo=True)
+            elif ativo_str.lower() == 'false':
+                queryset = queryset.filter(ativo=False)
+
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nome__icontains=search) | Q(email__icontains=search)
+            )
+            
+        return queryset
+
+
+class UserManagerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /users/:id — Busca um usuário (só Gestor).
+    PATCH  /users/:id — Altera um usuário (só Gestor).
+    DELETE /users/:id — Desativa um usuário (só Gestor).
+    """
+    permission_classes = [IsGestor]
     queryset = Usuario.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method in ('PATCH', 'PUT'):
+            return UsuarioManagerUpdateSerializer
+        return UsuarioSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Validação: Gestor não pode deletar a si mesmo.
+        if request.user.id == instance.id:
+            return Response(
+                {'detail': 'Um gestor não pode desativar a própria conta.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # Soft-delete
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save(update_fields=['ativo'])
 
 
 # ---------------------------------------------------------------------------
