@@ -29,6 +29,10 @@ urlpatterns = [
     path('roles/<int:pk>',       RoleDetailView.as_view(),     name='roles-detail'),
     path('users/<int:id>/roles/<int:roleId>',
          UsuarioRoleAddView.as_view(), name='users-roles-add'),
-    
-    # ... (rest of urls)
+
+    # /me  (portal do cidadão)
+    path('me/history',           MeHistoryView.as_view(),    name='me-history'),
+    path('me/points',            MePointsView.as_view(),     name='me-points'),
+    path('me/benefits',          MeBenefitsView.as_view(),   name='me-benefits'),
+    path('me/program',           MeProgramView.as_view(),    name='me-program'),
 ]
