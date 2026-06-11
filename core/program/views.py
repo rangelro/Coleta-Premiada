@@ -33,6 +33,8 @@ from .serializers import (
 )
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 
+from config.pagination import StandardResultsSetPagination
+
 
 # ---------------------------------------------------------------------------
 # IMÓVEIS  /properties/*
@@ -43,13 +45,37 @@ class ImovelListCreateView(generics.ListCreateAPIView):
     🔒 POST /properties — cria imóvel e publica adesão na fila.
     """
     serializer_class = ImovelSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = Imovel.objects.select_related('titular').all()
+        qs = Imovel.objects.select_related('titular').all().order_by('id')
         user = self.request.user
         # Regra de negócio: morador só enxerga seus próprios imóveis.
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(Q(titular=user) | Q(moradores=user)).distinct()
+        
+        # Filtros administrativos
+        bairro = self.request.query_params.get('bairro')
+        if bairro:
+            qs = qs.filter(bairro__icontains=bairro)
+            
+        cidade = self.request.query_params.get('cidade')
+        if cidade:
+            qs = qs.filter(cidade__icontains=cidade)
+            
+        ativo = self.request.query_params.get('ativo')
+        if ativo is not None:
+            if ativo.lower() == 'true':
+                qs = qs.filter(ativo=True)
+            elif ativo.lower() == 'false':
+                qs = qs.filter(ativo=False)
+                
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(inscricao__icontains=search) | Q(titular__nome__icontains=search)
+            )
+
         return qs
 
     def get_permissions(self):
@@ -61,8 +87,8 @@ class ImovelListCreateView(generics.ListCreateAPIView):
 
 class ImovelDetailView(generics.RetrieveUpdateAPIView):
     """
-    🔒 GET   /properties/:id — busca um imóvel.
-    🔒 PATCH /properties/:id — atualiza um imóvel (gestor/supervisor).
+    GET   /properties/:id — busca um imóvel.
+    PATCH /properties/:id — atualiza um imóvel (gestor/supervisor).
     """
     serializer_class = ImovelSerializer
     queryset = Imovel.objects.all()
@@ -74,7 +100,7 @@ class ImovelDetailView(generics.RetrieveUpdateAPIView):
 
 
 class ImovelAddUserView(APIView):
-    """🔒 POST /properties/:id/users — vincula um morador a um imóvel."""
+    """ POST /properties/:id/users — vincula um morador a um imóvel."""
     permission_classes = [IsGestorOrSupervisor]
 
     def post(self, request, id):
@@ -95,7 +121,7 @@ class ImovelAddUserView(APIView):
 
 
 class ImovelRemoveUserView(APIView):
-    """🔒 DELETE /properties/:id/users/:userId — remove um morador do imóvel."""
+    """ DELETE /properties/:id/users/:userId — remove um morador do imóvel."""
     permission_classes = [IsGestorOrSupervisor]
 
     def delete(self, request, id, userId):
@@ -117,8 +143,8 @@ class ImovelRemoveUserView(APIView):
 # ---------------------------------------------------------------------------
 class ProgramaListCreateView(generics.ListCreateAPIView):
     """
-    🔒 GET  /programs — lista programas (qualquer autenticado).
-    🔒 POST /programs — cria programa (somente gestor).
+     GET  /programs — lista programas (qualquer autenticado).
+     POST /programs — cria programa (somente gestor).
     """
     serializer_class = ProgramaSerializer
     queryset = Programa.objects.all().prefetch_related('regras')
@@ -127,8 +153,8 @@ class ProgramaListCreateView(generics.ListCreateAPIView):
 
 class ProgramaDetailView(generics.RetrieveUpdateAPIView):
     """
-    🔒 GET   /programs/:id — detalha um programa.
-    🔒 PATCH /programs/:id — atualiza um programa (gestor).
+     GET   /programs/:id — detalha um programa.
+     PATCH /programs/:id — atualiza um programa (gestor).
     """
     serializer_class = ProgramaSerializer
     queryset = Programa.objects.all().prefetch_related('regras')
@@ -138,8 +164,8 @@ class ProgramaDetailView(generics.RetrieveUpdateAPIView):
 
 class ProgramaRulesView(APIView):
     """
-    🔒 GET   /programs/:id/rules — retorna regras do programa.
-    🔒 PATCH /programs/:id/rules — atualiza regras do programa (gestor).
+     GET   /programs/:id/rules — retorna regras do programa.
+     PATCH /programs/:id/rules — atualiza regras do programa (gestor).
     """
     permission_classes = [ReadOnlyOrGestor]
 
@@ -162,7 +188,7 @@ class ProgramaRulesView(APIView):
 # ---------------------------------------------------------------------------
 class ConsolidacaoRunView(APIView):
     """
-    🔒 POST /consolidations/run — dispara consolidação do programa.
+    POST /consolidations/run — dispara consolidação do programa.
 
     Regras de negócio aplicadas:
     - Apenas gestor pode executar.
@@ -240,14 +266,23 @@ class ConsolidacaoRunView(APIView):
 
 
 class ConsolidacaoListView(generics.ListAPIView):
-    """🔒 GET /consolidations — lista consolidações já executadas."""
+    """ GET /consolidations — lista consolidações já executadas."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = ConsolidacaoSerializer
-    queryset = Consolidacao.objects.select_related('programa', 'executada_por')
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = Consolidacao.objects.select_related('programa', 'executada_por').all().order_by('-data_execucao')
+        
+        programa_id = self.request.query_params.get('programa_id')
+        if programa_id:
+            qs = qs.filter(programa_id=programa_id)
+            
+        return qs
 
 
 class ConsolidacaoDetailView(generics.RetrieveAPIView):
-    """🔒 GET /consolidations/:id — detalhe de uma consolidação."""
+    """ GET /consolidations/:id — detalhe de uma consolidação."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = ConsolidacaoSerializer
     queryset = Consolidacao.objects.select_related('programa', 'executada_por')
@@ -257,15 +292,32 @@ class ConsolidacaoDetailView(generics.RetrieveAPIView):
 # BENEFÍCIOS  /benefits/*
 # ---------------------------------------------------------------------------
 class BeneficioListView(generics.ListAPIView):
-    """🔒 GET /benefits — retorna todos os benefícios (saldos) consolidados."""
+    """ GET /benefits — retorna todos os benefícios (saldos) consolidados."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = SaldoPontosSerializer
-    queryset = SaldoPontos.objects.select_related('imovel')
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        qs = SaldoPontos.objects.select_related('imovel').all().order_by('-id')
+        
+        imovel_id = self.request.query_params.get('imovel_id')
+        if imovel_id:
+            qs = qs.filter(imovel_id=imovel_id)
+            
+        programa_id = self.request.query_params.get('programa_id')
+        if programa_id:
+            qs = qs.filter(programa_id=programa_id)
+            
+        ciclo = self.request.query_params.get('ciclo')
+        if ciclo:
+            qs = qs.filter(ciclo=ciclo)
+            
+        return qs
 
 
 class BeneficioDetailView(APIView):
     """
-    🔒 GET /benefits/:propertyId/:programaId — benefícios do imóvel em um programa.
+    GET /benefits/:propertyId/:programaId — benefícios do imóvel em um programa.
 
     Retorna a lista completa de saldos por ciclo e o desconto total acumulado.
     """
@@ -295,7 +347,7 @@ class BeneficioDetailView(APIView):
 # RELATÓRIOS  /reports/*
 # ---------------------------------------------------------------------------
 class ReportParticipationView(APIView):
-    """🔒 GET /reports/participation — quem participou do programa."""
+    """ GET /reports/participation — quem participou do programa."""
     permission_classes = [IsGestorOrSupervisor]
 
     def get(self, request):
@@ -313,12 +365,21 @@ class ReportParticipationView(APIView):
             )
             .order_by('-pontos')
         )
+        
+        programa_id = request.query_params.get('programa_id')
+        if programa_id:
+            participantes = participantes.filter(programa_id=programa_id)
+
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(participantes, request)
+        if page is not None:
+            return paginator.get_paginated_response(page)
         return Response(list(participantes))
 
 
 
 class ReportRankingView(APIView):
-    """🔒 GET /reports/ranking — ranking de imóveis por pontuação."""
+    """ GET /reports/ranking — ranking de imóveis por pontuação."""
     permission_classes = [IsGestorOrSupervisor]
 
     def get(self, request):
@@ -328,13 +389,22 @@ class ReportRankingView(APIView):
             RegistroColeta.objects
             .values('imovel__inscricao', 'imovel__titular__nome')
             .annotate(pontos=Sum('pontuacao'))
-            .order_by('-pontos')[:50]
+            .order_by('-pontos')
         )
+        
+        programa_id = request.query_params.get('programa_id')
+        if programa_id:
+            ranking = ranking.filter(programa_id=programa_id)
+
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(ranking, request)
+        if page is not None:
+            return paginator.get_paginated_response(page)
         return Response(list(ranking))
 
 
 class ReportImpactView(APIView):
-    """🔒 GET /reports/impact — impacto agregado do programa."""
+    """ GET /reports/impact — impacto agregado do programa."""
     permission_classes = [IsGestorOrSupervisor]
 
     def get(self, request):
@@ -362,8 +432,8 @@ class ReportImpactView(APIView):
 # ---------------------------------------------------------------------------
 class ConstantePontuacaoView(APIView):
     """
-    🔒 GET   /scoring-constant — leitura da constante (qualquer autenticado).
-    🔒 PATCH /scoring-constant — atualiza a constante (somente supervisor).
+    GET   /scoring-constant — leitura da constante (qualquer autenticado).
+    PATCH /scoring-constant — atualiza a constante (somente supervisor).
     """
 
     def get_permissions(self):
