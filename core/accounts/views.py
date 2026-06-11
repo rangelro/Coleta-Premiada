@@ -80,15 +80,12 @@ class AuthCreateView(generics.CreateAPIView):
     queryset = Usuario.objects.all()
 
 
+from config.pagination import StandardResultsSetPagination
+
+
 # ---------------------------------------------------------------------------
 # GERENCIAMENTO DE USUÁRIOS (GESTORES)  /users/*
 # ---------------------------------------------------------------------------
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
-
 class UserManagerView(generics.ListCreateAPIView):
     """
     🔒 GET  /users — Lista, filtra e pagina usuários (só Gestor).
