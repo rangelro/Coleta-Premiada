@@ -183,7 +183,9 @@ class RoleDetailView(generics.RetrieveUpdateAPIView):
 
 
 class UsuarioRoleAddView(APIView):
-    """🔒 POST /users/:id/roles/:roleId — vincula um papel a um usuário."""
+    """🔒 POST /users/:id/roles/:roleId — vincula um papel a um usuário.
+       🔒 DELETE /users/:id/roles/:roleId — remove o vínculo de um papel a um usuário.
+    """
     permission_classes = [IsGestor]
 
     def post(self, request, id, roleId):
@@ -197,6 +199,19 @@ class UsuarioRoleAddView(APIView):
 
         usuario.roles.add(role)
         return Response(UsuarioSerializer(usuario).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, id, roleId):
+        try:
+            usuario = Usuario.objects.get(pk=id)
+            role = Role.objects.get(pk=roleId)
+        except (Usuario.DoesNotExist, Role.DoesNotExist):
+            return Response({'detail': 'Usuário ou papel não encontrado.'}, status=404)
+
+        if not usuario.roles.filter(pk=roleId).exists():
+            return Response({'detail': 'Vínculo não encontrado.'}, status=404)
+
+        usuario.roles.remove(role)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------
