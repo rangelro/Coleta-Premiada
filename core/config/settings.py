@@ -151,9 +151,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 # User-agent enviado ao Nominatim — deve identificar o projeto
 NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')
 
-# Google OAuth2
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+# Anthropic API Key
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 
 # DeepSeek API Key
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
@@ -161,3 +160,7 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 # LLM local via LM Studio (OpenAI-compatible)
 LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://host.docker.internal:1234')
 LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
+
+# Google OAuth2
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')

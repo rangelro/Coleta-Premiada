@@ -32,3 +32,4 @@ class Command(BaseCommand):
             self.stdout.write("\nResultado do LLM:\n")
             self.stdout.write(resultado['relatorio'])
             self.stdout.write(f"\nTokens utilizados: {resultado['tokens_utilizados']}")
+ 
