@@ -34,6 +34,7 @@ from .serializers import (
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 
 from config.pagination import StandardResultsSetPagination
+from rest_framework.exceptions import ValidationError
 
 
 # ---------------------------------------------------------------------------
@@ -272,12 +273,15 @@ class ConsolidacaoListView(generics.ListAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = Consolidacao.objects.select_related('programa', 'executada_por').all().order_by('-data_execucao')
+        qs = Consolidacao.objects.select_related('programa', 'executada_por').all().order_by('-executada_em')
         
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
-            qs = qs.filter(programa_id=programa_id)
-            
+            try:
+                qs = qs.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
+
         return qs
 
 
@@ -302,16 +306,22 @@ class BeneficioListView(generics.ListAPIView):
         
         imovel_id = self.request.query_params.get('imovel_id')
         if imovel_id:
-            qs = qs.filter(imovel_id=imovel_id)
-            
+            try:
+                qs = qs.filter(imovel_id=int(imovel_id))
+            except ValueError:
+                raise ValidationError({'imovel_id': 'Deve ser um número inteiro.'})
+
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
-            qs = qs.filter(programa_id=programa_id)
-            
+            try:
+                qs = qs.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
+
         ciclo = self.request.query_params.get('ciclo')
         if ciclo:
             qs = qs.filter(ciclo=ciclo)
-            
+
         return qs
 
 
@@ -368,7 +378,10 @@ class ReportParticipationView(APIView):
         
         programa_id = request.query_params.get('programa_id')
         if programa_id:
-            participantes = participantes.filter(programa_id=programa_id)
+            try:
+                participantes = participantes.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
 
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(participantes, request)
@@ -394,7 +407,10 @@ class ReportRankingView(APIView):
         
         programa_id = request.query_params.get('programa_id')
         if programa_id:
-            ranking = ranking.filter(programa_id=programa_id)
+            try:
+                ranking = ranking.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
 
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(ranking, request)
