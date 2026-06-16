@@ -129,3 +129,7 @@ NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')
 
 # Anthropic API Key
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+
+# LLM local via LM Studio (OpenAI-compatible)
+LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://host.docker.internal:1234')
+LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
