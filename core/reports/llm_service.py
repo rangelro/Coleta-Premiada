@@ -111,14 +111,27 @@ class LLMReportService:
         )
 
         try:
-            # 4. Chamada à API (Claude 3.5 Haiku)
+            # 4. Chamada à API (Claude Sonnet 4.6)
             response = self.client.messages.create(
-                model="claude-3-5-haiku-20241022",
+                model="claude-sonnet-4-6",
                 max_tokens=2048,
                 system=system_content,
                 messages=[
                     {"role": "user", "content": user_prompt}
                 ]
+            )
+
+            # Log de uso para validar o prompt caching (cache_control).
+            # Numa 2ª chamada com o mesmo prefixo (TTL 5 min), cache_read > 0
+            # confirma o cache hit. Se ambos ficarem 0, o system prompt está
+            # abaixo do mínimo cacheável do modelo (2048 tokens no Sonnet 4.6).
+            usage = response.usage
+            logger.info(
+                "LLM usage | input=%s cache_write=%s cache_read=%s output=%s",
+                usage.input_tokens,
+                usage.cache_creation_input_tokens,
+                usage.cache_read_input_tokens,
+                usage.output_tokens,
             )
 
             return response.content[0].text
