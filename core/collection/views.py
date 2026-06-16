@@ -11,6 +11,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 
 from accounts.permissions import (
     IsGestor, IsMorador, IsGestorOrSupervisor,
@@ -53,20 +54,34 @@ class ColetaListCreateView(generics.ListCreateAPIView):
         # Filtros
         imovel_id = self.request.query_params.get('imovel_id')
         if imovel_id:
-            qs = qs.filter(imovel_id=imovel_id)
-            
+            try:
+                qs = qs.filter(imovel_id=int(imovel_id))
+            except ValueError:
+                raise ValidationError({'imovel_id': 'Deve ser um número inteiro.'})
+
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
-            qs = qs.filter(programa_id=programa_id)
-            
+            try:
+                qs = qs.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
+
         data_inicio = self.request.query_params.get('data_inicio')
         if data_inicio:
-            qs = qs.filter(data_coleta__date__gte=data_inicio)
-            
+            try:
+                import datetime; datetime.date.fromisoformat(data_inicio)
+            except ValueError:
+                raise ValidationError({'data_inicio': 'Use o formato YYYY-MM-DD.'})
+            qs = qs.filter(data_hora_coleta__date__gte=data_inicio)
+
         data_fim = self.request.query_params.get('data_fim')
         if data_fim:
-            qs = qs.filter(data_coleta__date__lte=data_fim)
-            
+            try:
+                import datetime; datetime.date.fromisoformat(data_fim)
+            except ValueError:
+                raise ValidationError({'data_fim': 'Use o formato YYYY-MM-DD.'})
+            qs = qs.filter(data_hora_coleta__date__lte=data_fim)
+
         return qs
 
     def get_permissions(self):
@@ -145,7 +160,7 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Contestacao.objects.select_related(
             'coleta', 'aberta_por', 'analisada_por',
-        ).all().order_by('-data_abertura')
+        ).all().order_by('-aberta_em')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(aberta_por=user)
