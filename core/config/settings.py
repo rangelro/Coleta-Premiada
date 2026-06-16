@@ -151,8 +151,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 # User-agent enviado ao Nominatim — deve identificar o projeto
 NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')
 
-# Anthropic API Key
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+# DeepSeek API Key
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 # DeepSeek API Key
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
