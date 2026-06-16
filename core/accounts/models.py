@@ -62,5 +62,5 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         return f"{self.nome} ({self.perfil})"
 
 
-auditlog.register(Usuario)
+auditlog.register(Usuario, m2m_fields={'roles'})
 auditlog.register(Role)
