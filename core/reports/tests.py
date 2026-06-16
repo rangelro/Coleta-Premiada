@@ -3,9 +3,9 @@ Testes do serviço de relatórios via LLM (reports.llm_service).
 
 Cobertura:
   - extrair_dados_do_banco: agregações sobre coletas/saldos no período.
-  - gerar_relatorio_narrativo: monta o prompt correto (modelo, cache_control,
-    dados em JSON) usando o cliente Anthropic MOCKADO — sem custo e sem API key.
-  - comportamento sem ANTHROPIC_API_KEY configurada.
+  - gerar_relatorio_narrativo: monta o prompt correto (modelo, dados em JSON)
+    usando o cliente DeepSeek MOCKADO — sem custo e sem API key.
+  - comportamento sem DEEPSEEK_API_KEY configurada.
 
 Rodar:
     python manage.py test reports
@@ -37,7 +37,7 @@ def _criar_imovel(inscricao, bairro, titular):
     )
 
 
-@override_settings(ANTHROPIC_API_KEY="test-key")
+@override_settings(DEEPSEEK_API_KEY="test-key")
 class ExtrairDadosDoBancoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -121,14 +121,15 @@ class ExtrairDadosDoBancoTests(TestCase):
         self.assertEqual(dados["descontos_iptu"]["media_percentual_desconto"], 0.0)
 
 
-@override_settings(ANTHROPIC_API_KEY="test-key")
+@override_settings(DEEPSEEK_API_KEY="test-key")
 class GerarRelatorioNarrativoTests(TestCase):
-    @patch("reports.llm_service.anthropic.Anthropic")
-    def test_monta_prompt_modelo_e_cache_control(self, mock_anthropic_cls):
-        mock_client = mock_anthropic_cls.return_value
+    @patch("reports.llm_service.openai.OpenAI")
+    def test_monta_prompt_e_modelo(self, mock_openai_cls):
+        mock_client = mock_openai_cls.return_value
         mock_resp = MagicMock()
-        mock_resp.content = [MagicMock(text="Relatório narrativo gerado.")]
-        mock_client.messages.create.return_value = mock_resp
+        mock_resp.choices = [MagicMock(message=MagicMock(content="Relatório narrativo gerado."))]
+        mock_resp.usage = MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+        mock_client.chat.completions.create.return_value = mock_resp
 
         fim = timezone.now()
         inicio = fim - timedelta(days=30)
@@ -137,21 +138,19 @@ class GerarRelatorioNarrativoTests(TestCase):
         )
 
         self.assertEqual(texto, "Relatório narrativo gerado.")
-        self.assertEqual(mock_client.messages.create.call_count, 1)
+        self.assertEqual(mock_client.chat.completions.create.call_count, 1)
 
-        kwargs = mock_client.messages.create.call_args.kwargs
-        # Modelo exigido pela task.
-        self.assertEqual(kwargs["model"], "claude-sonnet-4-6")
-        # cache_control no system prompt (prompt caching).
-        self.assertEqual(kwargs["system"][0]["cache_control"], {"type": "ephemeral"})
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+        self.assertEqual(kwargs["model"], "deepseek-chat")
+        # System prompt na primeira mensagem.
+        self.assertEqual(kwargs["messages"][0]["role"], "system")
         # Dados em JSON dentro do prompt do usuário.
-        user_content = kwargs["messages"][0]["content"]
+        user_content = kwargs["messages"][1]["content"]
         self.assertIn("metricas_gerais", user_content)
         self.assertIn("Relatório de Impacto Mensal", user_content)
-        # JSON válido embutido no prompt.
         self.assertIn(json.dumps({"inicio": inicio.isoformat()})[1:-1], user_content)
 
-    @override_settings(ANTHROPIC_API_KEY=None)
+    @override_settings(DEEPSEEK_API_KEY=None)
     def test_sem_api_key_retorna_erro_sem_chamar_api(self):
         service = LLMReportService()
         self.assertIsNone(service.client)

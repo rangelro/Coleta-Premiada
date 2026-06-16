@@ -24,9 +24,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"✗ Erro na extração: {e}"))
             return
 
-        self.stdout.write("\n--- Testando chamada ao LLM (Claude) ---")
+        self.stdout.write("\n--- Testando chamada ao LLM (DeepSeek) ---")
         if not service.api_key:
-            self.stdout.write(self.style.WARNING("! Pulando chamada à API: ANTHROPIC_API_KEY não configurada."))
+            self.stdout.write(self.style.WARNING("! Pulando chamada à API: DEEPSEEK_API_KEY não configurada."))
         else:
             relatorio = service.gerar_relatorio_narrativo("Relatório de Impacto Mensal", inicio, fim)
             self.stdout.write("\nResultado do LLM:\n")
