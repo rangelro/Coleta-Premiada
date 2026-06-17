@@ -9,3 +9,4 @@ python-dotenv==1.2.2
 geopy==2.4.1
 celery==5.4.0
 openai>=1.0.0
+django-prometheus==2.3.1
