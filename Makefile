@@ -25,3 +25,12 @@ shell:
 	docker compose exec core bash
 shell-microservice:
 	docker compose exec collection-microservice bash
+
+# Comandos para Monitoramento
+
+monitoring-up:
+	docker compose -f docker-compose.monitoring.yml up -d
+monitoring-down:
+	docker compose -f docker-compose.monitoring.yml down
+monitoring-logs:
+	docker compose -f docker-compose.monitoring.yml logs -f --tail=100
