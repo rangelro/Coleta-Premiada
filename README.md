@@ -69,7 +69,46 @@ O Coleta Premiada é uma plataforma integrada que gerencia o ciclo completo da r
 - **Banco de Dados (PostgreSQL)**: localhost:5433 (Exposta para ferramentas externas)
 - **Painel do RabbitMQ**: http://localhost:15672
 - **Painel do MinIO**: http://localhost:9001
-- **Grafana**: http://localhost:3000
+
+## Monitoramento (Prometheus + Grafana)
+
+A stack de monitoramento é opcional e roda em um compose separado. Requer que a stack principal (`make up`) já esteja no ar, pois o `postgres_exporter` acessa o PostgreSQL via rede `coleta-shared`.
+
+### Como subir
+
+```bash
+make monitoring-up
+```
+
+### Serviços e portas
+
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| Grafana | http://localhost:3000 | Dashboards de visualização |
+| Prometheus | http://localhost:9090 | Coleta e consulta de métricas |
+| postgres_exporter | http://localhost:9187/metrics | Métricas do PostgreSQL |
+| node_exporter | http://localhost:9100/metrics | Métricas do host (Docker VM) |
+
+### Credenciais padrão
+
+| Serviço | Usuário | Senha |
+|---------|---------|-------|
+| Grafana | `admin` | `senha_admin_grafana` |
+
+### Configurar datasource Prometheus no Grafana
+
+1. Acesse http://localhost:3000 e faça login
+2. Vá em **Connections → Data sources → Add data source**
+3. Selecione **Prometheus**
+4. Em **URL**, informe `http://prometheus:9090`
+5. Clique em **Save & test**
+
+### Outros comandos
+
+```bash
+make monitoring-logs   # Ver logs da stack de monitoramento
+make monitoring-down   # Derrubar a stack de monitoramento
+```
 
 ## 📖 Documentação Adicional
 
