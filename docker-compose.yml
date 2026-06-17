@@ -137,28 +137,11 @@ services:
     networks:
       - coleta-shared
 
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: coleta-premiada-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
-    volumes:
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - postgres
-    networks:
-      - coleta-shared
-
 volumes:
   postgres_data:
   postgres_backups:
   rabbitmq_data:
   minio_data:
-  grafana-data:
 
 networks:
   coleta-shared:
