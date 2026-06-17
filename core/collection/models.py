@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from auditlog.registry import auditlog
 from program.models import Imovel, Programa
 
 
@@ -81,8 +80,3 @@ class Contestacao(models.Model):
 
     def __str__(self):
         return f"Contestação #{self.id} ({self.status})"
-
-
-auditlog.register(RegistroColeta)
-auditlog.register(Evidencia)
-auditlog.register(Contestacao)
