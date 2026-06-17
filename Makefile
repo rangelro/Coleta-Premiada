@@ -34,3 +34,5 @@ monitoring-down:
 	docker compose -f docker-compose.monitoring.yml down
 monitoring-logs:
 	docker compose -f docker-compose.monitoring.yml logs -f --tail=100
+monitoring-smoke:
+	bash scripts/smoke_test_monitoring.sh
