@@ -11,7 +11,7 @@ groups:
           severity: warning
         annotations:
           summary: "Conexões PostgreSQL acima de 80%"
-          description: "Uso de conexões em {{ printf \"%.1f\" (mul $value 100) }}% do limite max_connections."
+          description: "Uso de conexões em {{ $value | humanizePercentage }} do limite max_connections."
 
       - alert: PGSlowQuery
         expr: pg_long_running_queries_count > 0
@@ -31,7 +31,7 @@ groups:
           severity: critical
         annotations:
           summary: "Uso de disco acima de 80%"
-          description: "Sistema de arquivos {{ $labels.mountpoint }} com {{ printf \"%.1f\" (mul $value 100) }}% de uso."
+          description: "Sistema de arquivos {{ $labels.mountpoint }} com {{ $value | humanizePercentage }} de uso."
 
       - alert: RabbitMQQueueHigh
         expr: rabbitmq_queue_messages_ready > 1000
