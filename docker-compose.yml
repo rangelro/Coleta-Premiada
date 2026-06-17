@@ -7,10 +7,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./monitoring/postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
       - coleta-shared
     healthcheck:
@@ -29,8 +31,10 @@ services:
     ports:
       - "5672:5672"   # porta da fila
       - "15672:15672" # painel de administração
+      - "15692:15692" # métricas Prometheus
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks:
       - coleta-shared
     healthcheck:
