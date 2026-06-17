@@ -6,6 +6,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -13,6 +14,7 @@ services:
       - '--web.enable-lifecycle'
     networks:
       - monitoring
+      - coleta-shared
     restart: unless-stopped
 
   grafana:
@@ -23,8 +25,10 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/coleta-premiada.json
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
     networks:
@@ -39,6 +43,10 @@ services:
     env_file: .env
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    volumes:
+      - ./monitoring/postgres-queries.yml:/etc/postgres_exporter/queries.yml:ro
+    command:
+      - '--config.file=/etc/postgres_exporter/queries.yml'
     networks:
       - monitoring
       - coleta-shared
