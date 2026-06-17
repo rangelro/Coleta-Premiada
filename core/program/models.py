@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.conf import settings
-from auditlog.registry import auditlog
 
 
 class Programa(models.Model):
@@ -152,11 +151,3 @@ class ConstantePontuacao(models.Model):
     def get_valor(cls) -> 'ConstantePontuacao':
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
-
-
-auditlog.register(Programa)
-auditlog.register(RegraPrograma)
-auditlog.register(Imovel)
-auditlog.register(SaldoPontos)
-auditlog.register(Consolidacao)
-auditlog.register(ConstantePontuacao)
