@@ -1,0 +1,43 @@
+groups:
+  - name: coleta_premiada
+    interval: 30s
+    rules:
+      - alert: PGConnectionsHigh
+        expr: >
+          sum(pg_stat_database_numbackends{datname!~"template.*|postgres"})
+          / pg_settings_max_connections > 0.8
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Conexões PostgreSQL acima de 80%"
+          description: "Uso de conexões em {{ printf \"%.1f\" (mul $value 100) }}% do limite max_connections."
+
+      - alert: PGSlowQuery
+        expr: pg_long_running_queries_count > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queries lentas detectadas (> 5s)"
+          description: "{{ $value }} queries ativas estão em execução há mais de 5 segundos."
+
+      - alert: DiskSpaceHigh
+        expr: >
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+          / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 0.8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Uso de disco acima de 80%"
+          description: "Sistema de arquivos {{ $labels.mountpoint }} com {{ printf \"%.1f\" (mul $value 100) }}% de uso."
+
+      - alert: RabbitMQQueueHigh
+        expr: rabbitmq_queue_messages_ready > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fila RabbitMQ com mais de 1000 mensagens pendentes"
+          description: "A fila {{ $labels.queue }} tem {{ $value }} mensagens aguardando processamento."
