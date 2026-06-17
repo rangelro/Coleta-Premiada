@@ -46,7 +46,7 @@ services:
     volumes:
       - ./monitoring/postgres-queries.yml:/etc/postgres_exporter/queries.yml:ro
     command:
-      - '--config.file=/etc/postgres_exporter/queries.yml'
+      - '--extend.query-path=/etc/postgres_exporter/queries.yml'
     networks:
       - monitoring
       - coleta-shared
