@@ -10,3 +10,4 @@ django-auditlog==3.4.1
 geopy==2.4.1
 celery==5.4.0
 django-cors-headers==4.9.0
+openai>=1.0.0

@@ -11,6 +11,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 
 from accounts.permissions import (
     IsGestor, IsMorador, IsGestorOrSupervisor,
@@ -24,6 +25,8 @@ from .serializers import (
     ContestacaoCreateSerializer,
     ContestacaoUpdateSerializer,
 )
+
+from config.pagination import StandardResultsSetPagination
 
 
 # ---------------------------------------------------------------------------
@@ -40,12 +43,45 @@ class ColetaListCreateView(generics.ListCreateAPIView):
     - Gestor/supervisor vê todas.
     """
     serializer_class = RegistroColetaSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular')
+        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular').all().order_by('-data_coleta')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(imovel__titular=user)
+        
+        # Filtros
+        imovel_id = self.request.query_params.get('imovel_id')
+        if imovel_id:
+            try:
+                qs = qs.filter(imovel_id=int(imovel_id))
+            except ValueError:
+                raise ValidationError({'imovel_id': 'Deve ser um número inteiro.'})
+
+        programa_id = self.request.query_params.get('programa_id')
+        if programa_id:
+            try:
+                qs = qs.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
+
+        data_inicio = self.request.query_params.get('data_inicio')
+        if data_inicio:
+            try:
+                import datetime; datetime.date.fromisoformat(data_inicio)
+            except ValueError:
+                raise ValidationError({'data_inicio': 'Use o formato YYYY-MM-DD.'})
+            qs = qs.filter(data_hora_coleta__date__gte=data_inicio)
+
+        data_fim = self.request.query_params.get('data_fim')
+        if data_fim:
+            try:
+                import datetime; datetime.date.fromisoformat(data_fim)
+            except ValueError:
+                raise ValidationError({'data_fim': 'Use o formato YYYY-MM-DD.'})
+            qs = qs.filter(data_hora_coleta__date__lte=data_fim)
+
         return qs
 
     def get_permissions(self):
@@ -109,6 +145,8 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
 
     Regra do POST: a coleta precisa pertencer a um imóvel do morador logado.
     """
+    pagination_class = StandardResultsSetPagination
+
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return ContestacaoCreateSerializer
@@ -122,10 +160,16 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Contestacao.objects.select_related(
             'coleta', 'aberta_por', 'analisada_por',
-        )
+        ).all().order_by('-aberta_em')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(aberta_por=user)
+        
+        # Filtros
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+            
         return qs
 
     def perform_create(self, serializer):
