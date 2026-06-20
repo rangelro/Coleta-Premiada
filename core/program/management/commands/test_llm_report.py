@@ -28,6 +28,7 @@ class Command(BaseCommand):
         if not service.api_key:
             self.stdout.write(self.style.WARNING("! Pulando chamada à API: DEEPSEEK_API_KEY não configurada."))
         else:
-            relatorio = service.gerar_relatorio_narrativo("Relatório de Impacto Mensal", inicio, fim)
+            resultado = service.gerar_relatorio_narrativo("Relatório de Impacto Mensal", inicio, fim)
             self.stdout.write("\nResultado do LLM:\n")
-            self.stdout.write(relatorio)
+            self.stdout.write(resultado['relatorio'])
+            self.stdout.write(f"\nTokens utilizados: {resultado['tokens_utilizados']}")

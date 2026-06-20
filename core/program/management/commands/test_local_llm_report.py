@@ -43,10 +43,11 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(f"\n[2/2] Gerando relatório via LLM local...")
-        relatorio = service.gerar_relatorio_narrativo(options['tipo'], inicio, fim)
+        resultado = service.gerar_relatorio_narrativo(options['tipo'], inicio, fim)
 
-        if relatorio.startswith("Erro"):
-            self.stdout.write(self.style.ERROR(relatorio))
+        if not resultado['sucesso']:
+            self.stdout.write(self.style.ERROR(resultado['relatorio']))
         else:
             self.stdout.write(self.style.SUCCESS("✓ Relatório gerado:\n"))
-            self.stdout.write(relatorio)
+            self.stdout.write(resultado['relatorio'])
+            self.stdout.write(f"\nTokens utilizados: {resultado['tokens_utilizados']}")

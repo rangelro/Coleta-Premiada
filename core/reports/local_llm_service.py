@@ -22,14 +22,15 @@ class LocalLLMReportService:
         self.model = getattr(settings, 'LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
         self.endpoint = f"{self.base_url}/v1/chat/completions"
 
-    def extrair_dados_do_banco(self, data_inicio, data_fim):
+    def extrair_dados_do_banco(self, data_inicio, data_fim, programa_id=None):
         """
         Consulta e agrega dados relevantes do banco para o período informado.
-        Idêntico ao LLMReportService — reutilizável sem depender da API Anthropic.
         """
         coletas_qs = RegistroColeta.objects.filter(
             data_hora_coleta__range=(data_inicio, data_fim)
         )
+        if programa_id:
+            coletas_qs = coletas_qs.filter(programa_id=programa_id)
 
         metrics = coletas_qs.aggregate(
             total_peso=Sum('peso_kg'),
@@ -45,6 +46,8 @@ class LocalLLMReportService:
         )
 
         saldos_qs = SaldoPontos.objects.filter(atualizado__range=(data_inicio, data_fim))
+        if programa_id:
+            saldos_qs = saldos_qs.filter(programa_id=programa_id)
         descontos_metrics = saldos_qs.aggregate(
             media_desconto=Avg('desconto_percentual'),
         )
@@ -69,7 +72,7 @@ class LocalLLMReportService:
             },
         }
 
-    def _chamar_llm(self, system_prompt: str, user_prompt: str) -> str:
+    def _chamar_llm(self, system_prompt: str, user_prompt: str) -> tuple:
         payload = {
             "model": self.model,
             "messages": [
@@ -91,19 +94,22 @@ class LocalLLMReportService:
 
         text = result["choices"][0]["message"]["content"]
         usage = result.get("usage", {})
+        total_tokens = usage.get("total_tokens") or 0
         logger.info(
             "Local LLM usage | prompt_tokens=%s completion_tokens=%s total_tokens=%s",
             usage.get("prompt_tokens"),
             usage.get("completion_tokens"),
-            usage.get("total_tokens"),
+            total_tokens,
         )
-        return text
+        return text, total_tokens
 
-    def gerar_relatorio_narrativo(self, tipo_relatorio: str, data_inicio, data_fim) -> str:
+    def gerar_relatorio_narrativo(
+        self, tipo_relatorio: str, data_inicio, data_fim, programa_id=None
+    ) -> dict:
         """
         Extrai dados do banco, monta o prompt e chama o LLM local via LM Studio.
         """
-        dados = self.extrair_dados_do_banco(data_inicio, data_fim)
+        dados = self.extrair_dados_do_banco(data_inicio, data_fim, programa_id=programa_id)
 
         system_prompt = (
             "Você é um consultor analítico do programa 'Coleta Premiada'. "
@@ -122,13 +128,18 @@ class LocalLLMReportService:
         )
 
         try:
-            return self._chamar_llm(system_prompt, user_prompt)
+            texto, tokens = self._chamar_llm(system_prompt, user_prompt)
+            return {"relatorio": texto, "tokens_utilizados": tokens, "sucesso": True}
         except urllib.error.URLError as e:
             logger.error("LM Studio inacessível em %s: %s", self.endpoint, e)
-            return f"Erro: LM Studio não está respondendo em {self.endpoint}. Verifique se o servidor está rodando."
+            return {
+                "relatorio": f"Erro: LM Studio não está respondendo em {self.endpoint}. Verifique se o servidor está rodando.",
+                "tokens_utilizados": 0,
+                "sucesso": False,
+            }
         except (KeyError, IndexError, json.JSONDecodeError) as e:
             logger.error("Resposta inesperada do LLM local: %s", e)
-            return f"Erro: resposta inesperada do LLM local — {e}"
+            return {"relatorio": f"Erro: resposta inesperada do LLM local — {e}", "tokens_utilizados": 0, "sucesso": False}
         except Exception as e:
             logger.error("Erro ao chamar LLM local: %s", e)
-            return f"Erro ao gerar relatório: {e}"
+            return {"relatorio": f"Erro ao gerar relatório: {e}", "tokens_utilizados": 0, "sucesso": False}

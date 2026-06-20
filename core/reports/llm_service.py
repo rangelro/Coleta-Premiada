@@ -26,13 +26,15 @@ class LLMReportService:
                 base_url="https://api.deepseek.com",
             )
 
-    def extrair_dados_do_banco(self, data_inicio, data_fim):
+    def extrair_dados_do_banco(self, data_inicio, data_fim, programa_id=None):
         """
         Consulta e agrega dados relevantes do banco para o período informado.
         """
         coletas_qs = RegistroColeta.objects.filter(
             data_hora_coleta__range=(data_inicio, data_fim)
         )
+        if programa_id:
+            coletas_qs = coletas_qs.filter(programa_id=programa_id)
 
         metrics = coletas_qs.aggregate(
             total_peso=Sum('peso_kg'),
@@ -48,6 +50,8 @@ class LLMReportService:
         )
 
         saldos_qs = SaldoPontos.objects.filter(atualizado__range=(data_inicio, data_fim))
+        if programa_id:
+            saldos_qs = saldos_qs.filter(programa_id=programa_id)
         descontos_metrics = saldos_qs.aggregate(
             media_desconto=Avg('desconto_percentual'),
             max_desconto=Sum('desconto_percentual')
@@ -73,14 +77,16 @@ class LLMReportService:
             }
         }
 
-    def gerar_relatorio_narrativo(self, tipo_relatorio: str, data_inicio, data_fim) -> str:
+    def gerar_relatorio_narrativo(
+        self, tipo_relatorio: str, data_inicio, data_fim, programa_id=None
+    ) -> dict:
         """
-        Monta o prompt, envia ao DeepSeek e retorna o relatório em texto narrativo.
+        Monta o prompt, envia ao DeepSeek e retorna dict com relatório e uso de tokens.
         """
         if not self.client:
-            return "Erro: API Key do DeepSeek não configurada."
+            return {"relatorio": "Erro: API Key do DeepSeek não configurada.", "tokens_utilizados": 0, "sucesso": False}
 
-        dados = self.extrair_dados_do_banco(data_inicio, data_fim)
+        dados = self.extrair_dados_do_banco(data_inicio, data_fim, programa_id=programa_id)
 
         system_prompt = (
             "Você é um consultor analítico do programa 'Coleta Premiada'. "
@@ -115,7 +121,11 @@ class LLMReportService:
                 usage.total_tokens,
             )
 
-            return response.choices[0].message.content
+            return {
+                "relatorio": response.choices[0].message.content,
+                "tokens_utilizados": usage.total_tokens,
+                "sucesso": True,
+            }
         except Exception as e:
             logger.error(f"Erro ao chamar API DeepSeek: {e}")
-            return f"Erro ao gerar relatório: {str(e)}"
+            return {"relatorio": f"Erro ao gerar relatório: {str(e)}", "tokens_utilizados": 0, "sucesso": False}

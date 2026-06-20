@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     'program',
     'collection',
     'custom_audit',
+    'reports',
+    'auditlog', #auditoria
 ]
 
 MIDDLEWARE = [
