@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'accounts',
     'program',
     'collection',
+    'reports',
 
     'auditlog' #auditoria
 ]
