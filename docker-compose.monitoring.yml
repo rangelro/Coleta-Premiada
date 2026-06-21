@@ -1,6 +1,6 @@
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.0
     container_name: coleta-prometheus
     ports:
       - "9090:9090"
@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.0
     container_name: coleta-grafana
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/coleta-premiada.json
     volumes:
       - grafana-data:/var/lib/grafana
@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
 
   postgres_exporter:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: coleta-postgres-exporter
     ports:
       - "9187:9187"
@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   node_exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.8.1
     container_name: coleta-node-exporter
     ports:
       - "9100:9100"
