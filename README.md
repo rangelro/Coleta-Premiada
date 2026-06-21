@@ -18,7 +18,7 @@ O Coleta Premiada é uma plataforma integrada que gerencia o ciclo completo da r
 - **Task Queue**: Celery
 - **Armazenamento de Objetos**: MinIO (Fotos e evidências)
 - **Orquestração**: Docker Compose
-- **Auditoria**: Django Auditlog
+- **Auditoria**: Auditoria Customizada (custom_audit)
 
 ## 📁 Estrutura do Projeto
 

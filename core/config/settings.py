@@ -24,20 +24,18 @@ INSTALLED_APPS = [
     'accounts',
     'program',
     'collection',
+    'custom_audit',
     'reports',
-
-    'auditlog' #auditoria
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # middleware de CORS
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware', # middleware de auditoria
-    'auditlog.middleware.AuditlogMiddleware', # middleware de auditoria
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'custom_audit.middleware.CustomAuditMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

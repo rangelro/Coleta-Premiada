@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from auditlog.registry import auditlog
 
 
 class UsuarioManager(BaseUserManager):
@@ -60,7 +59,3 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.nome} ({self.perfil})"
-
-
-auditlog.register(Usuario, m2m_fields={'roles'})
-auditlog.register(Role)
