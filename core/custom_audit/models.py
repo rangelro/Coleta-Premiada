@@ -9,11 +9,11 @@ class AuditLog(models.Model):
         ('SELECT', 'Select'),
     ]
 
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
-    usuario_id = models.IntegerField(null=True, blank=True, db_index=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    usuario_id = models.IntegerField(null=True, blank=True)
     usuario_email = models.CharField(max_length=255, null=True, blank=True)
     operacao = models.CharField(max_length=10, choices=OPERACAO_CHOICES)
-    tabela = models.CharField(max_length=100, db_index=True)
+    tabela = models.CharField(max_length=100)
     objeto_id = models.CharField(max_length=255, null=True, blank=True)
     dados_antes = models.JSONField(null=True, blank=True)
     dados_depois = models.JSONField(null=True, blank=True)
