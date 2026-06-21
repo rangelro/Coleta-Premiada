@@ -135,7 +135,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "topk(10, pg_stat_statements_seconds_total / pg_stat_statements_calls_total > 1)",
+          "expr": "topk(10, rate(pg_stat_statements_seconds_total[5m]) / rate(pg_stat_statements_calls_total[5m]) > 1)",
           "legendFormat": "{{query}}",
           "refId": "A",
           "instant": true,

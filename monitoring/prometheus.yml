@@ -2,6 +2,15 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Alertmanager não configurado: alertas disparam na UI (/alerts) mas não enviam notificações.
+# Para habilitar notificações, adicione um serviço alertmanager no docker-compose.monitoring.yml
+# e descomente a seção abaixo:
+#
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
 rule_files:
   - /etc/prometheus/alerts.yml
 

@@ -15,7 +15,7 @@ if [[ -f .env ]]; then set -a; . <(sed 's/\r$//' .env); set +a; fi
 PG_USER="${POSTGRES_USER:-coleta_user}"
 PG_DB="${POSTGRES_DB:-coleta_premiada}"
 GF_USER="${GF_ADMIN_USER:-admin}"
-GF_PASS="${GF_ADMIN_PASS:-senha_admin_grafana}"
+GF_PASS="${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD não definida — copie .env.example para .env e preencha}"
 
 pass() { echo "${GREEN}✓ PASS${NC} $1"; PASS=$((PASS+1)); }
 fail() { echo "${RED}✗ FAIL${NC} $1"; FAIL=$((FAIL+1)); }
