@@ -20,13 +20,18 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'corsheaders', # CORS
     'accounts',
     'program',
     'collection',
     'custom_audit',
+    'reports',
+
+    'auditlog' #auditoria
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # middleware de CORS
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware', # middleware de auditoria
@@ -36,6 +41,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# Origens permitidas no CORS
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3001",
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -125,3 +137,10 @@ CELERY_ACCEPT_CONTENT = ['json']
 
 # User-agent enviado ao Nominatim — deve identificar o projeto
 NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')
+
+# DeepSeek API Key
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+
+# LLM local via LM Studio (OpenAI-compatible)
+LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://host.docker.internal:1234')
+LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
