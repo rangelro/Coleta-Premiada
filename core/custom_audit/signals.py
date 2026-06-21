@@ -3,8 +3,9 @@ import logging
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.auth import get_user_model
-from program.models import Imovel, Programa
-from collection.models import RegistroColeta
+from program.models import Imovel, Programa, SaldoPontos, Consolidacao, ConstantePontuacao, RegraPrograma
+from collection.models import RegistroColeta, Evidencia, Contestacao
+from accounts.models import Role
 from .request_store import get_current_request, get_client_ip
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,6 @@ def serialize_model(instance):
     """
     data = {}
     for field in instance._meta.fields:
-        # Evita serializar M2M ou relações reversas complexas, apenas campos padrão
-        if field.many_to_many or field.one_to_many:
-            continue
         value = field.value_from_object(instance)
         try:
             # Tenta converter o valor serializado de volta para garantir tipos primitivos JSON limpos
@@ -140,20 +138,13 @@ def log_delete(sender, instance, **kwargs):
 
 
 def register_signals():
-    """
-    Registra os signals para os modelos principais: Usuario, Imovel, Programa, RegistroColeta, e opcionalmente Coleta.
-    """
     Usuario = get_user_model()
-    
-    models_to_audit = [Usuario, Imovel, Programa, RegistroColeta]
 
-    # Verifica dinamicamente se o model Coleta existe em collection.models
-    try:
-        from collection.models import Coleta
-        if Coleta not in models_to_audit:
-            models_to_audit.append(Coleta)
-    except ImportError:
-        pass
+    models_to_audit = [
+        Usuario, Role,
+        Imovel, Programa, RegraPrograma, SaldoPontos, Consolidacao, ConstantePontuacao,
+        RegistroColeta, Evidencia, Contestacao,
+    ]
 
     for model in models_to_audit:
         pre_save.connect(keep_old_state, sender=model, dispatch_uid=f"audit_pre_save_{model._meta.label}")
