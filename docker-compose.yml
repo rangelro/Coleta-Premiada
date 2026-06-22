@@ -60,10 +60,15 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - core-network
-      - storage-network
-      - messaging-network
-      - observability-network
+      core-network: {}
+      storage-network: {}
+      messaging-network: {}
+      coleta-observability:
+        aliases:
+          - core
+      coleta-shared:
+        aliases:
+          - core
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1',8000),3)\" 2>/dev/null"]
@@ -212,8 +217,10 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks:
-      - messaging-network
-      - observability-network
+      messaging-network: {}
+      coleta-observability:
+        aliases:
+          - rabbitmq
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
@@ -229,185 +236,9 @@ services:
           cpus: "0.25"
           memory: 256M
 
-  # ─── MICROSSERVIÇO ────────────────────────────────────────────────────────
-
-  ms-db:
-    image: mongo:7.0
-    env_file: .env
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
-    volumes:
-      - ms-db-data:/data/db
-    networks:
-      - ms-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
-  ms:
-    build:
-      context: ../cp-collection-ms
-      target: production
-    env_file: .env
-    environment:
-      MONGO_HOST: ms-db
-      MONGO_PORT: "27017"
-      RABBITMQ_HOST: rabbitmq
-      MINIO_ENDPOINT: minio:9000
-      DEBUG: "false"
-    ports:
-      - "8002:8001"
-    depends_on:
-      ms-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - ms-network
-      - storage-network
-      - messaging-network
-      - observability-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1',8001),3)\" 2>/dev/null"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
-  ms-consumer:
-    build:
-      context: ../cp-collection-ms
-      target: production
-    env_file: .env
-    environment:
-      MONGO_HOST: ms-db
-      MONGO_PORT: "27017"
-      RABBITMQ_HOST: rabbitmq
-      DEBUG: "false"
-    command: python manage.py consumir_imoveis
-    depends_on:
-      ms-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - ms-network
-      - messaging-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
-
-  # ─── FRONTEND ─────────────────────────────────────────────────────────────
-
-  frontend:
-    build:
-      context: ../coleta-premiada-frontend
-      target: production
-    env_file: .env
-    ports:
-      - "3000:3000"
-    networks:
-      - core-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-        reservations:
-          cpus: "0.5"
-          memory: 256M
-
   # ─── OBSERVABILIDADE ──────────────────────────────────────────────────────
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=30d
-      - --web.console.libraries=/usr/share/prometheus/console_libraries
-      - --web.console.templates=/usr/share/prometheus/consoles
-      - --web.enable-lifecycle
-    networks:
-      - observability-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO/dev/null http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
-  grafana:
-    image: grafana/grafana:latest
-    env_file: .env
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER}
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    ports:
-      - "3001:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      - prometheus
-    networks:
-      - observability-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO/dev/null http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
+  # Prometheus e Grafana ficam em coleta-observability (../coleta-observability).
+  # Exporters ficam aqui pois precisam acessar core-db pela rede interna.
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -421,73 +252,10 @@ services:
       core-db:
         condition: service_healthy
     networks:
-      - core-network
-      - observability-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.1"
-          memory: 64M
-        reservations:
-          cpus: "0.05"
-          memory: 32M
-
-  mongodb-exporter:
-    image: percona/mongodb_exporter:0.43
-    env_file: .env
-    environment:
-      MONGODB_URI: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@ms-db:27017/${MONGO_INITDB_DATABASE}?authSource=admin"
-    depends_on:
-      ms-db:
-        condition: service_healthy
-    networks:
-      - ms-network
-      - observability-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.1"
-          memory: 64M
-        reservations:
-          cpus: "0.05"
-          memory: 32M
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    privileged: true
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-    networks:
-      - observability-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.2"
-          memory: 128M
-        reservations:
-          cpus: "0.1"
-          memory: 64M
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    pid: host
-    command:
-      - --path.procfs=/host/proc
-      - --path.rootfs=/rootfs
-      - --path.sysfs=/host/sys
-      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    networks:
-      - observability-network
+      core-network: {}
+      coleta-observability:
+        aliases:
+          - postgres-exporter
     restart: unless-stopped
     deploy:
       resources:
@@ -527,58 +295,31 @@ services:
           cpus: "0.05"
           memory: 64M
 
-  backup-ms:
-    image: mongo:7.0
-    env_file: .env
-    environment:
-      MONGO_USER: ${MONGO_USER}
-      MONGO_PASSWORD: ${MONGO_PASSWORD}
-      MONGO_DB: ${MONGO_INITDB_DATABASE}
-    volumes:
-      - backup-data:/backups
-      - ./scripts/backup-ms.sh:/backup.sh:ro
-    command: bash /backup.sh
-    depends_on:
-      ms-db:
-        condition: service_healthy
-    networks:
-      - ms-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.1"
-          memory: 128M
-        reservations:
-          cpus: "0.05"
-          memory: 64M
 
 volumes:
   core-db-data:
   rabbitmq-data:
   minio-data:
-  ms-db-data:
-  prometheus-data:
-  grafana-data:
   backup-data:
 
 # ─── NETWORKS ─────────────────────────────────────────────────────────────────
 #
-#  core-network       — core-db, core, core-celery*, core-consumer
-#  ms-network         — ms-db, ms, ms-consumer
-#  storage-network    — minio (acessado por core e ms)
-#  messaging-network  — rabbitmq + todos os produtores/consumidores
-#  observability-network — prometheus, grafana, exporters + serviços monitorados
+#  core-network          — core-db, core, core-celery*, core-consumer
+#  storage-network       — minio (acessado por core)
+#  messaging-network     — rabbitmq + todos os produtores/consumidores
+#  coleta-observability  — rede externa criada por ../coleta-observability
 
 
 networks:
   core-network:
     driver: bridge
-  ms-network:
-    driver: bridge
   storage-network:
     driver: bridge
   messaging-network:
     driver: bridge
-  observability-network:
+  coleta-observability:
+    external: true
+    name: coleta-observability
+  coleta-shared:
+    name: coleta-shared
     driver: bridge

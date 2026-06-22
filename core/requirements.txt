@@ -13,3 +13,4 @@ openai>=1.0.0
 django-prometheus==2.3.1
 django-cors-headers==4.9.0
 gunicorn==23.0.0
+whitenoise==6.11.0
