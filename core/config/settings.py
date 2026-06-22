@@ -152,6 +152,10 @@ CELERY_ACCEPT_CONTENT = ['json']
 # User-agent enviado ao Nominatim — deve identificar o projeto
 NOMINATIM_USER_AGENT = os.getenv('NOMINATIM_USER_AGENT', 'coleta-premiada/1.0')
 
+# Google OAuth2
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+
 # DeepSeek API Key
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
