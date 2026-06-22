@@ -71,6 +71,36 @@ O Coleta Premiada é uma plataforma integrada que gerencia o ciclo completo da r
 - **Painel do MinIO**: http://localhost:9001
 - **Grafana**: http://localhost:3000
 
+## 💾 Backup e Restore do Banco de Dados
+
+O serviço `db-backup` (ver `./db-backup`) executa `pg_dump` diariamente via cron e mantém uma política de retenção do tipo "diário + semanal":
+
+- **Backups diários**: um por dia, mantidos os `BACKUP_KEEP_DAILY` (padrão 7) mais recentes em `/backups/postgres/daily` (volume `postgres_backups`).
+- **Backups semanais**: no dia da semana definido por `BACKUP_WEEKLY_DAY` (padrão 7 = domingo), o backup do dia também é copiado para `/backups/postgres/weekly`, mantendo os `BACKUP_KEEP_WEEKLY` (padrão 4) mais recentes.
+- **Agendamento**: configurável via `BACKUP_CRON_SCHEDULE` (padrão `0 2 * * *`, todo dia às 2h).
+
+### Gerar um backup manualmente
+
+```bash
+docker compose exec db-backup /scripts/backup.sh
+```
+
+### Restaurar um backup
+
+```bash
+# Lista os backups disponíveis no volume
+docker compose exec db-backup /scripts/restore.sh
+
+# Restaura um arquivo específico (pede confirmação antes de sobrescrever o banco)
+docker compose exec db-backup /scripts/restore.sh /backups/postgres/daily/coleta_premiada_2026-06-18_02-00-00.dump
+```
+
+`pg_restore --clean --if-exists` é usado internamente, ou seja, a restauração **substitui os dados atuais** do banco de destino.
+
+### Variáveis de ambiente
+
+Ver `BACKUP_CRON_SCHEDULE`, `BACKUP_KEEP_DAILY`, `BACKUP_KEEP_WEEKLY` e `BACKUP_WEEKLY_DAY` no `.env.example`.
+
 ## 📖 Documentação Adicional
 
 - [Diagramas de Arquitetura](./docs/diagrams/)
