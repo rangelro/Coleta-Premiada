@@ -13,19 +13,9 @@ log() {
     echo "[$(date -Iseconds)] $*"
 }
 
-if [ -n "${MONGO_USER:-}" ] && [ -n "${MONGO_PASSWORD:-}" ]; then
-    AUTH_ARGS="--username ${MONGO_USER} --password ${MONGO_PASSWORD} --authenticationDatabase ${MONGO_AUTH_DB}"
-else
-    AUTH_ARGS=""
-fi
-
 log "Starting MongoDB log cleanup on ${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}.${MONGO_LOG_COLLECTION}"
 
-mongosh \
-    "mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}" \
-    $AUTH_ARGS \
-    --quiet \
-    --eval "
+MONGO_EVAL="
 const retentionDays = Number('${RETENTION_DAYS}');
 const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 const collectionName = '${MONGO_LOG_COLLECTION}';
@@ -40,5 +30,20 @@ printjson({
   deletedCount: result.deletedCount
 });
 "
+
+if [ -n "${MONGO_USER:-}" ] && [ -n "${MONGO_PASSWORD:-}" ]; then
+    mongosh \
+        "mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}" \
+        --username "$MONGO_USER" \
+        --password "$MONGO_PASSWORD" \
+        --authenticationDatabase "$MONGO_AUTH_DB" \
+        --quiet \
+        --eval "$MONGO_EVAL"
+else
+    mongosh \
+        "mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}" \
+        --quiet \
+        --eval "$MONGO_EVAL"
+fi
 
 log "MongoDB log cleanup finished"
