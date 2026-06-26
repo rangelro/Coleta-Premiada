@@ -160,9 +160,7 @@ services:
       LOG_CLEANUP_BATCH_SIZE: "5000"
     volumes:
       - ./scripts/maintenance:/maintenance:ro
-    command: >
-      sh -c "printf '15 2 * * * sh /maintenance/cleanup_logs.sh\n45 2 * * * sh /maintenance/vacuum_analyze.sh\n30 3 * * 0 sh /maintenance/reindex.sh\n' > /etc/crontabs/root
-      && crond -f -l 8"
+    command: sh /maintenance/postgres_cron.sh
     depends_on:
       core-db:
         condition: service_healthy
@@ -186,7 +184,7 @@ services:
     environment:
       MONGO_HOST: ms-db
       MONGO_PORT: "27017"
-      MONGO_DB: ${MONGO_INITDB_DATABASE}
+      MONGO_DB: ${MONGO_INITDB_DATABASE:-coleta_db}
       MONGO_AUTH_DB: admin
       MONGO_LOG_COLLECTION: audit_logs
       MONGO_LOG_DATE_FIELD: created_at
