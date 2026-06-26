@@ -26,6 +26,15 @@ shell:
 shell-microservice:
 	docker compose exec collection-microservice bash
 
+# Comandos para CI
+
+check:
+	docker compose run --rm core python manage.py check
+migrations-check:
+	docker compose run --rm core python manage.py makemigrations --check --dry-run
+migrate-check:
+	docker compose run --rm core python manage.py migrate
+
 # Comandos para Monitoramento
 
 monitoring-up:

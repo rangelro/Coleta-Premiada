@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push: 
+    branches: [main, develop, temp_develop]
+  pull_request:
+    branches: [main, develop, temp_develop]
+
+
+jobs:
+  check-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create shared network
+        run: docker network create coleta-observability || true
+
+      - name: Setup env
+        run: cp .env.example .env
+
+      - name: Build fresh containers
+        run: docker compose build --no-cache
+      
+      - name: Check Django
+        run: make check
+
+      - name: Check migrations
+        run: make migrations-check
+
+      - name: Apply migrations
+        run: make migrate-check
+      
