@@ -17,8 +17,8 @@ staticfiles/
 db.sqlite3
 
 # Migrations
-**/migrations/*.py
-!**/migrations/__init__.py
+# **/migrations/*.py
+# !**/migrations/__init__.py
 
 # jetbrains ide's
 .idea

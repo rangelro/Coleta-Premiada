@@ -20,8 +20,8 @@ jobs:
       - name: Setup env
         run: cp .env.example .env
 
-      - name: Build fresh containers
-        run: docker compose build --no-cache
+      - name: Install project
+        run: make up
       
       - name: Check Django
         run: make check
