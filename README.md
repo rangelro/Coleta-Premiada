@@ -171,6 +171,15 @@ docker compose run --rm postgres-maintenance sh /maintenance/vacuum_analyze.sh
 docker compose run --rm postgres-maintenance sh /maintenance/reindex.sh
 ```
 
+Smoke test automatico:
+
+```bash
+make maintenance-smoke
+```
+
+O smoke test exige que as tabelas do core ja existam no PostgreSQL, incluindo
+`audit_log` do app `custom_audit`.
+
 ### MongoDB
 
 Servico: `mongo-maintenance`
@@ -195,4 +204,10 @@ Execucao manual:
 
 ```bash
 docker compose run --rm mongo-maintenance sh /maintenance/cleanup_mongo_logs.sh
+```
+
+Para incluir MongoDB no smoke test:
+
+```bash
+RUN_MONGO_MAINTENANCE_TEST=1 make maintenance-smoke
 ```

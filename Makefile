@@ -36,3 +36,8 @@ monitoring-logs:
 	docker compose -f docker-compose.monitoring.yml logs -f --tail=100
 monitoring-smoke:
 	bash scripts/smoke_test_monitoring.sh
+
+# Comandos de manutencao
+
+maintenance-smoke:
+	bash scripts/smoke_test_maintenance.sh
