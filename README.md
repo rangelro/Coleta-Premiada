@@ -144,3 +144,55 @@ docker compose exec core python manage.py createsuperuser
 # Ver logs do sistema
 docker compose logs -f core
 ```
+
+## Manutencao automatizada dos bancos
+
+Os scripts ficam em `scripts/maintenance/` e sao executados por servicos do
+`docker-compose.yml`.
+
+### PostgreSQL
+
+Servico: `postgres-maintenance`
+
+Periodicidade recomendada:
+
+- `cleanup_logs.sh`: diariamente as 02:15, remove registros de `audit_log`
+  mais antigos que `LOG_RETENTION_DAYS` dias.
+- `vacuum_analyze.sh`: diariamente as 02:45, executa `VACUUM ANALYZE` nas
+  principais tabelas do core.
+- `reindex.sh`: semanalmente aos domingos as 03:30, executa `REINDEX TABLE
+  CONCURRENTLY` nas tabelas com maior volume de escrita.
+
+Execucao manual:
+
+```bash
+docker compose run --rm postgres-maintenance sh /maintenance/cleanup_logs.sh
+docker compose run --rm postgres-maintenance sh /maintenance/vacuum_analyze.sh
+docker compose run --rm postgres-maintenance sh /maintenance/reindex.sh
+```
+
+### MongoDB
+
+Servico: `mongo-maintenance`
+
+Este repositorio nao define o MongoDB do microservico de coleta. O script
+`cleanup_mongo_logs.sh` assume que o Mongo esta acessivel como `ms-db` pela
+rede `coleta-shared` e usa as variaveis `MONGO_*` do `.env`.
+
+Periodicidade recomendada:
+
+- `cleanup_mongo_logs.sh`: diariamente, complementar ao TTL index, remove
+  documentos antigos da colecao de logs.
+
+Defaults configuraveis:
+
+- `LOG_RETENTION_DAYS=90`
+- `MONGO_LOG_COLLECTION=audit_logs`
+- `MONGO_LOG_DATE_FIELD=created_at`
+- `MONGO_AUTH_DB=admin`
+
+Execucao manual:
+
+```bash
+docker compose run --rm mongo-maintenance sh /maintenance/cleanup_mongo_logs.sh
+```
