@@ -7,6 +7,9 @@ Cobre:
 - /roles/*      CRUD de papéis (permissões)
 - /me/*         portal do cidadão (histórico, pontos, benefícios, programa)
 """
+import requests as http_client
+
+from django.conf import settings
 from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
@@ -17,6 +20,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from .models import Usuario, Role
 from .serializers import (
+    GoogleOAuthSerializer,
     UsuarioSerializer,
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
@@ -78,6 +82,104 @@ class AuthCreateView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = UsuarioCreateSerializer
     queryset = Usuario.objects.all()
+
+
+class GoogleOAuthLoginView(APIView):
+    """
+    POST /auth/google — troca o código OAuth2 do Google por tokens JWT locais.
+
+    Fluxo esperado:
+      1. Frontend redireciona o usuário para a URL de autorização do Google.
+      2. Google redireciona de volta com `?code=...` para o frontend.
+      3. Frontend envia { code, redirect_uri } para este endpoint.
+      4. Backend troca o código pelo access_token do Google, busca os dados
+         do usuário, cria ou atualiza o Usuario local e devolve o par JWT.
+    """
+    permission_classes = [AllowAny]
+
+    _GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+    _GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
+
+    def post(self, request):
+        serializer = GoogleOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        code = serializer.validated_data['code']
+        redirect_uri = serializer.validated_data['redirect_uri']
+
+        access_token = self._exchange_code(code, redirect_uri)
+        if access_token is None:
+            return Response(
+                {'detail': 'Falha ao obter token do Google. Verifique o código ou tente novamente.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        google_user = self._fetch_google_user(access_token)
+        if google_user is None:
+            return Response(
+                {'detail': 'Falha ao buscar dados do usuário no Google.'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        usuario = self._get_or_create_usuario(google_user)
+        if not usuario.ativo:
+            return Response(
+                {'detail': 'Conta inativa. Entre em contato com o administrador.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        refresh = RefreshToken.for_user(usuario)
+        return Response(
+            {'access': str(refresh.access_token), 'refresh': str(refresh)},
+            status=status.HTTP_200_OK,
+        )
+
+    def _exchange_code(self, code: str, redirect_uri: str) -> str | None:
+        try:
+            resp = http_client.post(
+                self._GOOGLE_TOKEN_URL,
+                data={
+                    'grant_type': 'authorization_code',
+                    'code': code,
+                    'redirect_uri': redirect_uri,
+                    'client_id': settings.GOOGLE_CLIENT_ID,
+                    'client_secret': settings.GOOGLE_CLIENT_SECRET,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            return resp.json().get('access_token')
+        except Exception:
+            return None
+
+    def _fetch_google_user(self, access_token: str) -> dict | None:
+        try:
+            resp = http_client.get(
+                self._GOOGLE_USERINFO_URL,
+                headers={'Authorization': f'Bearer {access_token}'},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except Exception:
+            return None
+
+    def _get_or_create_usuario(self, google_data: dict) -> 'Usuario':
+        email = google_data.get('email', '')
+        nome = google_data.get('name', '') or email.split('@')[0]
+
+        usuario = Usuario.objects.filter(email=email).first()
+        if usuario:
+            if usuario.nome != nome:
+                usuario.nome = nome
+                usuario.save(update_fields=['nome'])
+        else:
+            usuario = Usuario.objects.create_user(
+                email=email,
+                nome=nome,
+                perfil='morador',
+            )
+        return usuario
 
 
 from config.pagination import StandardResultsSetPagination

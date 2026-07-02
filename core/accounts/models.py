@@ -46,6 +46,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(unique=True)
     cpf = models.CharField(max_length=14, unique=True, null=True, blank=True)
+    matricula = models.CharField(max_length=20, unique=True, null=True, blank=True)
     nome = models.CharField(max_length=150)
     perfil = models.CharField(max_length=20, choices=PERFIS)
     ativo = models.BooleanField(default=True)

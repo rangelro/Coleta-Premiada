@@ -1,0 +1,106 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  docker-compose.override.yml — Desenvolvimento
+#
+#  Aplicado automaticamente por `docker compose up`.
+#  Diferenças em relação à base (produção):
+#    • Build aponta para target development (hot reload via runserver/npm dev)
+#    • Código-fonte montado em volume para refletir edições sem rebuild
+#    • Variáveis DEBUG=true / LOG_LEVEL=DEBUG
+#    • Portas de diagnóstico expostas ao host (DB, RabbitMQ management, Prometheus…)
+#    • Limites de recurso mais generosos
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── CORE ─────────────────────────────────────────────────────────────────
+
+  core-db:
+    ports:
+      - "5433:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  core:
+    build:
+      context: ./core
+      target: development
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./core:/app
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  core-celery:
+    build:
+      context: ./core
+      target: development
+    environment:
+      DEBUG: "true"
+    volumes:
+      - ./core:/app
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  core-celery-beat:
+    build:
+      context: ./core
+      target: development
+    environment:
+      DEBUG: "true"
+    volumes:
+      - ./core:/app
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  core-consumer:
+    build:
+      context: ./core
+      target: development
+    environment:
+      DEBUG: "true"
+    volumes:
+      - ./core:/app
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ─── MESSAGING ────────────────────────────────────────────────────────────
+
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+

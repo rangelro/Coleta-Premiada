@@ -46,3 +46,8 @@ class UsuarioManagerUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['nome', 'cpf', 'perfil', 'ativo']
+
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    redirect_uri = serializers.CharField()
