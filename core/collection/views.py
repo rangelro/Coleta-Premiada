@@ -7,6 +7,7 @@ Cobre:
 - /disputes/*                      contestações abertas pelos moradores
 """
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -46,10 +47,12 @@ class ColetaListCreateView(generics.ListCreateAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular').all().order_by('-data_coleta')
+        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular').all().order_by('-data_hora_coleta')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
-            qs = qs.filter(imovel__titular=user)
+            qs = qs.filter(
+                Q(imovel__titular=user) | Q(imovel__moradores=user)
+            ).distinct()
         
         # Filtros
         imovel_id = self.request.query_params.get('imovel_id')

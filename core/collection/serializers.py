@@ -6,7 +6,7 @@ class RegistroColetaSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegistroColeta
         fields = [
-            'id', 'id_microservico', 'imovel', 'pontuacao',
+            'id', 'id_microservico', 'imovel', 'programa', 'pontuacao',
             'data_hora_coleta', 'peso_kg',
         ]
         read_only_fields = ['id']
