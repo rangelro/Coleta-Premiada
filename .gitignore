@@ -22,3 +22,6 @@ db.sqlite3
 
 # jetbrains ide's
 .idea
+
+# celery
+core/celerybeat-schedule

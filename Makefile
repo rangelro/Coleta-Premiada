@@ -25,3 +25,21 @@ shell:
 	docker compose exec core bash
 shell-microservice:
 	docker compose exec collection-microservice bash
+
+# Comandos de Backup do PostgreSQL
+
+db-backup:
+	docker compose exec db-backup /scripts/backup.sh
+db-restore:
+	docker compose exec db-backup /scripts/restore.sh $(FILE)
+
+# Comandos para Monitoramento
+
+monitoring-up:
+	docker compose -f docker-compose.monitoring.yml up -d
+monitoring-down:
+	docker compose -f docker-compose.monitoring.yml down
+monitoring-logs:
+	docker compose -f docker-compose.monitoring.yml logs -f --tail=100
+monitoring-smoke:
+	bash scripts/smoke_test_monitoring.sh

@@ -3,8 +3,9 @@ from .views import (
     LogoutView,
     AuthMeView,
     AuthCreateView,
-    UsuarioListView,
-    UsuarioDetailView,
+    GoogleOAuthLoginView,
+    UserManagerView,
+    UserManagerDetailView,
     RoleListCreateView,
     RoleDetailView,
     UsuarioRoleAddView,
@@ -16,13 +17,14 @@ from .views import (
 
 urlpatterns = [
     # /auth
-    path('auth/logout',          LogoutView.as_view(),       name='auth-logout'),
-    path('auth/me',              AuthMeView.as_view(),       name='auth-me'),
-    path('auth',                 AuthCreateView.as_view(),   name='auth-create'),
+    path('auth/logout',          LogoutView.as_view(),           name='auth-logout'),
+    path('auth/me',              AuthMeView.as_view(),           name='auth-me'),
+    path('auth/google',          GoogleOAuthLoginView.as_view(), name='auth-google'),
+    path('auth',                 AuthCreateView.as_view(),       name='auth-create'),
 
-    # /users
-    path('users',                UsuarioListView.as_view(),  name='users-list'),
-    path('users/<int:pk>',       UsuarioDetailView.as_view(), name='users-detail'),
+    # /users (Gerenciamento de Usuários)
+    path('users',                UserManagerView.as_view(),  name='users-list-create'),
+    path('users/<int:pk>',       UserManagerDetailView.as_view(), name='users-detail-update-delete'),
 
     # /roles
     path('roles',                RoleListCreateView.as_view(), name='roles-list-create'),

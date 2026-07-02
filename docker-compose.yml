@@ -1,25 +1,211 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Coleta Premiada — docker-compose.yml  (base / produção)
+#
+#  Desenvolvimento:
+#    docker compose up                   → aplica o override automaticamente
+#    docker compose -f docker-compose.yml -f docker-compose.override.yml up
+#
+#  Produção:
+#    docker compose -f docker-compose.yml up
+# ═══════════════════════════════════════════════════════════════════════════════
+
 services:
-  # Banco de dados do Monolito Core (Django)
-  postgres:
+
+  # ─── CORE ────────────────────────────────────────────────────────────────
+
+  core-db:
     image: postgres:16-alpine
     env_file: .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5433:5432"
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - core-db-data:/var/lib/postgresql/data
+      - ./monitoring/postgres-init:/docker-entrypoint-initdb.d:ro
     networks:
-      - coleta-shared
+      - core-network
+    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
-  # Fila de mensagens assíncrona
+  core:
+    build:
+      context: ./core
+      target: production
+    env_file: .env
+    environment:
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: minio:9000
+      DEBUG: "false"
+    ports:
+      - "8001:8000"
+    depends_on:
+      core-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      core-network: {}
+      storage-network: {}
+      messaging-network: {}
+      coleta-observability:
+        aliases:
+          - core
+      coleta-shared:
+        aliases:
+          - core
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1',8000),3)\" 2>/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  core-celery:
+    build:
+      context: ./core
+      target: production
+    env_file: .env
+    environment:
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      DEBUG: "false"
+    command: celery -A config worker --loglevel=info --concurrency=2
+    depends_on:
+      core-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - core-network
+      - messaging-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  core-celery-beat:
+    build:
+      context: ./core
+      target: production
+    env_file: .env
+    environment:
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      DEBUG: "false"
+    command: celery -A config beat --loglevel=info
+    depends_on:
+      core-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - core-network
+      - messaging-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  core-consumer:
+    build:
+      context: ./core
+      target: production
+    env_file: .env
+    environment:
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      DEBUG: "false"
+    command: python manage.py consume_queue
+    depends_on:
+      core-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - core-network
+      - messaging-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ─── STORAGE ──────────────────────────────────────────────────────────────
+
+  minio:
+    image: minio/minio:latest
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - storage-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ─── MESSAGING ────────────────────────────────────────────────────────────
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     env_file: .env
@@ -27,118 +213,118 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
-      - "5672:5672"   # porta da fila
-      - "15672:15672" # painel de administração
+      - "5672:5672"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks:
-      - coleta-shared
+      messaging-network: {}
+      coleta-observability:
+        aliases:
+          - rabbitmq
+    restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
-  # Armazenamento de fotos (espelha o S3 localmente)
-  minio:
-    image: minio/minio
+  # ─── OBSERVABILIDADE ──────────────────────────────────────────────────────
+  # Prometheus e Grafana ficam em coleta-observability (../coleta-observability).
+  # Exporters ficam aqui pois precisam acessar core-db pela rede interna.
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
     env_file: .env
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000" # API do MinIO
-      - "9001:9001" # painel de administração
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@core-db:5432/${POSTGRES_DB}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres-exporter/queries.yml
     volumes:
-      - minio_data:/data
+      - ./monitoring/postgres-queries.yml:/etc/postgres-exporter/queries.yml:ro
+    depends_on:
+      core-db:
+        condition: service_healthy
     networks:
-      - coleta-shared
+      core-network: {}
+      coleta-observability:
+        aliases:
+          - postgres-exporter
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
 
-  core:
+  # ─── BACKUP ───────────────────────────────────────────────────────────────
+  # Backup agendado (cron) do PostgreSQL via pg_dump, com retenção diária/semanal.
+  # Scripts e documentação em ./db-backup.
+
+  db-backup:
     build:
-      context: ./core
-      target: development
+      context: ./db-backup
     env_file: .env
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      RABBITMQ_HOST: rabbitmq
-    ports:
-      - "8001:8000"
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      BACKUP_CRON_SCHEDULE: ${BACKUP_CRON_SCHEDULE:-0 2 * * *}
+      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
+      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
+      BACKUP_WEEKLY_DAY: ${BACKUP_WEEKLY_DAY:-7}
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
+      core-db:
         condition: service_healthy
     volumes:
-      - ./core:/app
+      - backup-data:/backups/postgres
     networks:
-      - coleta-shared
+      - core-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
 
-  core-celery:
-    build:
-      context: ./core
-      target: development
-    env_file: .env
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      RABBITMQ_HOST: rabbitmq
-    command: celery -A config worker --loglevel=info --concurrency=2
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - ./core:/app
-    networks:
-      - coleta-shared
 
-  core-consumer:
-    build:
-      context: ./core
-      target: development
-    env_file: .env
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      RABBITMQ_HOST: rabbitmq
-    command: python manage.py consume_queue
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - ./core:/app
-    networks:
-      - coleta-shared
-
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: coleta-premiada-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=senha_admin_grafana
-    volumes:
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - postgres
-    networks:
-      - coleta-shared
+# ─── VOLUMES ──────────────────────────────────────────────────────────────────
 
 volumes:
-  postgres_data:
-  rabbitmq_data:
-  minio_data:
-  grafana-data:
+  core-db-data:
+  rabbitmq-data:
+  minio-data:
+  backup-data:
+
+# ─── NETWORKS ─────────────────────────────────────────────────────────────────
+#
+#  core-network          — core-db, core, core-celery*, core-consumer, db-backup
+#  storage-network       — minio (acessado por core)
+#  messaging-network     — rabbitmq + todos os produtores/consumidores
+#  coleta-observability  — rede externa criada por ../coleta-observability
 
 networks:
+  core-network:
+    driver: bridge
+  storage-network:
+    driver: bridge
+  messaging-network:
+    driver: bridge
+  coleta-observability:
+    external: true
+    name: coleta-observability
   coleta-shared:
     name: coleta-shared
     driver: bridge

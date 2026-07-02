@@ -39,3 +39,15 @@ class UsuarioUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['nome', 'cpf']
+
+
+class UsuarioManagerUpdateSerializer(serializers.ModelSerializer):
+    """Usado por Gestores para atualizar dados de qualquer usuário."""
+    class Meta:
+        model = Usuario
+        fields = ['nome', 'cpf', 'perfil', 'ativo']
+
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    redirect_uri = serializers.CharField()
