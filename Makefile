@@ -26,6 +26,13 @@ shell:
 shell-microservice:
 	docker compose exec collection-microservice bash
 
+# Comandos de Backup do PostgreSQL
+
+db-backup:
+	docker compose exec db-backup /scripts/backup.sh
+db-restore:
+	docker compose exec db-backup /scripts/restore.sh $(FILE)
+
 # Comandos para Monitoramento
 
 monitoring-up:
