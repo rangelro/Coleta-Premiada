@@ -13,7 +13,7 @@ System(cp, "Coleta Premiada", "Plataforma de incentivo a reciclagem: adesao de i
 
 System_Ext(nominatim, "Nominatim", "Servico externo de geocodificacao usado pelo Core.")
 System_Ext(llm, "LLM", "Servico de IA usado para gerar relatorios narrativos. Codigo atual: DeepSeek; opcional local via LM Studio.")
-System_Ext(rabbitmq, "RabbitMQ", "Broker AMQP para eventos de imoveis e coletas; tambem broker Celery do Core.")
+System(rabbitmq, "RabbitMQ", "Broker AMQP operado pelo sistema para eventos de imoveis/coletas e tarefas Celery do Core.")
 
 Rel(gestor, cp, "Gerencia o programa e consulta relatorios", "HTTPS/JSON")
 Rel(supervisor, cp, "Consulta dados operacionais e ajusta pontuacao", "HTTPS/JSON")
@@ -21,8 +21,8 @@ Rel(coletor, cp, "Autentica e registra coletas em campo", "HTTPS/JSON")
 
 Rel(cp, nominatim, "Consulta coordenadas de imoveis", "HTTPS")
 Rel(cp, llm, "Envia agregacoes para relatorio narrativo", "HTTPS/OpenAI-compatible")
-Rel(cp, rabbitmq, "Publica imoveis e consome coletas", "AMQP")
-Rel(rabbitmq, cp, "Entrega eventos entre Core e MS", "AMQP")
+Rel(cp, rabbitmq, "Publica e consome mensagens de dominio e tarefas assincronas", "AMQP")
+Rel(rabbitmq, cp, "Entrega eventos entre Core, MS e workers", "AMQP")
 
 ' TODO: O requisito cita App React Native, mas o repositorio analisado em C:\Users\fdant\workspace\coleta-premiada-frontend e Next.js.
 ' Se existir um app mobile React Native em outro repositorio, incluir como cliente especifico do Coletor.

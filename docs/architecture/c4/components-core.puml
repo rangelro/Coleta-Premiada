@@ -19,7 +19,6 @@ Container_Boundary(core, "Core API - Django/DRF") {
 
     Component(collection_views, "collection.views", "DRF APIViews/generics", "Coletas processadas, evidencias e contestacoes.")
     Component(collection_models, "collection.models", "Django models", "RegistroColeta, Evidencia e Contestacao.")
-    Component(collection_consumer, "collection.management.commands.consume_queue", "Consumer RabbitMQ", "Consome coletas, calcula pontuacao e atualiza saldo.")
 
     Component(reports_views, "reports.views", "DRF APIViews", "Gera e consulta historico de relatorios narrativos.")
     Component(reports_service, "reports.llm_service.LLMReportService", "Servico de LLM", "Extrai agregacoes e chama DeepSeek via OpenAI-compatible API.")
@@ -29,6 +28,7 @@ Container_Boundary(core, "Core API - Django/DRF") {
     Component(audit, "custom_audit", "Middleware, signals, models e API", "Registra operacoes criticas e expoe logs/exportacao.")
 }
 
+Container(core_consumer, "Core Consumer", "Django management command", "Container/processo separado no C2: executa collection.management.commands.consume_queue.")
 ContainerDb(core_db, "Core PostgreSQL", "PostgreSQL 16", "Banco do Core.")
 ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis/coletas e broker Celery.")
 System_Ext(nominatim, "Nominatim", "Geocodificacao.")
@@ -56,10 +56,8 @@ Rel(program_tasks, messaging, "Republica Imovel geocodificado")
 
 Rel(collection_views, collection_models, "CRUD")
 Rel(collection_models, core_db, "Persistencia")
-Rel(collection_consumer, rabbitmq, "Consome fila coletas")
-Rel(collection_consumer, collection_models, "Cria RegistroColeta")
-Rel(collection_consumer, program_models, "Busca Imovel/Programa/Constante e atualiza SaldoPontos")
-Rel(collection_consumer, program_rules, "Aplica teto")
+Rel(core_consumer, rabbitmq, "Consome fila coletas", "AMQP")
+Rel(core_consumer, core_db, "Cria RegistroColeta e atualiza SaldoPontos", "PostgreSQL")
 
 Rel(reports_views, reports_service, "Gera relatorio")
 Rel(reports_service, collection_models, "Consulta agregacoes")
