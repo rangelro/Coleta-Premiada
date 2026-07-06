@@ -24,6 +24,15 @@ class ImovelSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_cidade(self, value):
+        from accounts.models import Cidade
+
+        if not Cidade.objects.filter(nome=value, ativo=True).exists():
+            raise serializers.ValidationError(
+                'Cidade não cadastrada ou inativa. Selecione uma das cidades disponíveis.'
+            )
+        return value
+
 
 
 class RegraProgramaSerializer(serializers.ModelSerializer):

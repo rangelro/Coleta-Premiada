@@ -9,6 +9,8 @@ from .views import (
     RoleListCreateView,
     RoleDetailView,
     UsuarioRoleAddView,
+    CidadeListCreateView,
+    CidadeDetailView,
     MeHistoryView,
     MePointsView,
     MeBenefitsView,
@@ -31,6 +33,10 @@ urlpatterns = [
     path('roles/<int:pk>',       RoleDetailView.as_view(),     name='roles-detail'),
     path('users/<int:id>/roles/<int:roleId>',
          UsuarioRoleAddView.as_view(), name='users-roles-add'),
+
+    # /cidades
+    path('cidades',              CidadeListCreateView.as_view(), name='cidades-list-create'),
+    path('cidades/<int:pk>',     CidadeDetailView.as_view(),     name='cidades-detail'),
 
     # /me  (portal do cidadão)
     path('me/history',           MeHistoryView.as_view(),    name='me-history'),
