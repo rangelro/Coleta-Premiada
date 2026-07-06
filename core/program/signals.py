@@ -13,6 +13,7 @@ def publicar_imovel(sender, instance, created, **kwargs):
         from messaging.producer import publish_morador
         publish_morador({
             'inscricao_imobiliaria': instance.inscricao,
+            'proprietario_id': instance.titular_id,
             'nome': instance.titular.nome,
             'cpf': instance.titular.cpf,
             'endereco': instance.logradouro,

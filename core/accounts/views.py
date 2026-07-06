@@ -18,16 +18,18 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from .models import Usuario, Role
+from .models import Usuario, Role, Cidade
 from .serializers import (
     GoogleOAuthSerializer,
     UsuarioSerializer,
     UsuarioCreateSerializer,
+    UsuarioSelfRegisterSerializer,
     UsuarioUpdateSerializer,
     UsuarioManagerUpdateSerializer,
     RoleSerializer,
+    CidadeSerializer,
 )
-from .permissions import IsGestor
+from .permissions import IsGestor, IsGerenteGeral
 
 
 # ---------------------------------------------------------------------------
@@ -78,9 +80,14 @@ class AuthMeView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class AuthCreateView(generics.CreateAPIView):
-    """POST /auth — cria um novo usuário."""
+    """
+    POST /auth — cadastro público, sempre como perfil 'morador'.
+
+    Gestor, supervisor e gerente_geral só podem ser criados por um usuário
+    já autorizado, via POST /users (UserManagerView).
+    """
     permission_classes = [AllowAny]
-    serializer_class = UsuarioCreateSerializer
+    serializer_class = UsuarioSelfRegisterSerializer
     queryset = Usuario.objects.all()
 
 
@@ -314,6 +321,34 @@ class UsuarioRoleAddView(APIView):
 
         usuario.roles.remove(role)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
+# CIDADES  /cidades/*
+# ---------------------------------------------------------------------------
+class CidadeListCreateView(generics.ListCreateAPIView):
+    """
+    🔒 GET  /cidades — lista cidades atendidas (qualquer autenticado).
+    🔒 POST /cidades — cadastra nova cidade (apenas gerente_geral).
+    """
+    serializer_class = CidadeSerializer
+    queryset = Cidade.objects.all()
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsGerenteGeral()]
+        return [IsAuthenticated()]
+
+
+class CidadeDetailView(generics.RetrieveUpdateAPIView):
+    """🔒 PATCH /cidades/:id — atualiza uma cidade (apenas gerente_geral)."""
+    serializer_class = CidadeSerializer
+    queryset = Cidade.objects.all()
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return [IsGerenteGeral()]
+        return [IsAuthenticated()]
 
 
 # ---------------------------------------------------------------------------

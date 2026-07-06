@@ -20,6 +20,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from accounts.permissions import IsGestor, IsGestorOrSupervisor, IsSupervisor, ReadOnlyOrGestor
 from accounts.models import Usuario
+from accounts.scoping import escopar_por_cidade, usuario_pode_ver_cidade
 
 from .models import (
     Programa, RegraPrograma,
@@ -54,7 +55,11 @@ class ImovelListCreateView(generics.ListCreateAPIView):
         # Regra de negócio: morador só enxerga seus próprios imóveis.
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(Q(titular=user) | Q(moradores=user)).distinct()
-        
+        else:
+            # Gestor/supervisor só enxergam imóveis da própria cidade;
+            # gerente_geral enxerga todas.
+            qs = escopar_por_cidade(qs, user, 'cidade')
+
         # Filtros administrativos
         bairro = self.request.query_params.get('bairro')
         if bairro:
@@ -99,6 +104,13 @@ class ImovelDetailView(generics.RetrieveUpdateAPIView):
             return [IsGestorOrSupervisor()]
         return [IsAuthenticated()]
 
+    def get_object(self):
+        obj = super().get_object()
+        # Gestor/supervisor só acessam imóveis da própria cidade.
+        if not usuario_pode_ver_cidade(self.request.user, obj.cidade):
+            self.permission_denied(self.request)
+        return obj
+
 
 class ImovelAddUserView(APIView):
     """ POST /properties/:id/users — vincula um morador a um imóvel."""
@@ -106,6 +118,8 @@ class ImovelAddUserView(APIView):
 
     def post(self, request, id):
         imovel = get_object_or_404(Imovel, pk=id)
+        if not usuario_pode_ver_cidade(request.user, imovel.cidade):
+            self.permission_denied(request)
         user_id = request.data.get('user_id') or request.data.get('userId')
         if not user_id:
             return Response({'detail': 'user_id obrigatório.'}, status=400)
@@ -127,6 +141,8 @@ class ImovelRemoveUserView(APIView):
 
     def delete(self, request, id, userId):
         imovel = get_object_or_404(Imovel, pk=id)
+        if not usuario_pode_ver_cidade(request.user, imovel.cidade):
+            self.permission_denied(request)
 
         if imovel.titular_id == int(userId):
             return Response(
@@ -303,7 +319,8 @@ class BeneficioListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = SaldoPontos.objects.select_related('imovel').all().order_by('-id')
-        
+        qs = escopar_por_cidade(qs, self.request.user, 'imovel__cidade')
+
         imovel_id = self.request.query_params.get('imovel_id')
         if imovel_id:
             try:
@@ -364,7 +381,7 @@ class ReportParticipationView(APIView):
         from collection.models import RegistroColeta
 
         participantes = (
-            RegistroColeta.objects
+            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
             .values(
                 'imovel__inscricao',
                 'imovel__titular__nome',
@@ -399,7 +416,7 @@ class ReportRankingView(APIView):
         from collection.models import RegistroColeta
 
         ranking = (
-            RegistroColeta.objects
+            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
             .values('imovel__inscricao', 'imovel__titular__nome')
             .annotate(pontos=Sum('pontuacao'))
             .order_by('-pontos')
@@ -426,13 +443,16 @@ class ReportImpactView(APIView):
     def get(self, request):
         from collection.models import RegistroColeta
 
-        total_coletas = RegistroColeta.objects.count()
-        total_pontos = RegistroColeta.objects.aggregate(t=Sum('pontuacao'))['t'] or 0
+        coletas_qs = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+        saldos_qs = escopar_por_cidade(SaldoPontos.objects.all(), request.user, 'imovel__cidade')
+
+        total_coletas = coletas_qs.count()
+        total_pontos = coletas_qs.aggregate(t=Sum('pontuacao'))['t'] or 0
         total_imoveis_participantes = (
-            RegistroColeta.objects.values('imovel').distinct().count()
+            coletas_qs.values('imovel').distinct().count()
         )
         total_desconto_concedido = (
-            SaldoPontos.objects.aggregate(t=Sum('desconto_percentual'))['t'] or 0
+            saldos_qs.aggregate(t=Sum('desconto_percentual'))['t'] or 0
         )
 
         return Response({

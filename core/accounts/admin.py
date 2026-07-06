@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Usuario, Role
+from .models import Usuario, Role, Cidade
 
 
 @admin.register(Usuario)
@@ -8,8 +8,8 @@ class UsuarioAdmin(UserAdmin):
     model = Usuario
 
     # Colunas exibidas na listagem
-    list_display = ('email', 'nome', 'perfil', 'ativo', 'is_staff')
-    list_filter = ('perfil', 'ativo', 'is_staff')
+    list_display = ('email', 'nome', 'perfil', 'cidade', 'ativo', 'is_staff')
+    list_filter = ('perfil', 'cidade', 'ativo', 'is_staff')
     search_fields = ('email', 'nome', 'cpf')
     ordering = ('email',)
 
@@ -22,7 +22,7 @@ class UsuarioAdmin(UserAdmin):
             'fields': ('nome', 'cpf')
         }),
         ('Perfil e Acesso', {
-            'fields': ('perfil', 'ativo', 'is_staff', 'is_superuser')
+            'fields': ('perfil', 'cidade', 'ativo', 'is_staff', 'is_superuser')
         }),
     )
 
@@ -30,7 +30,7 @@ class UsuarioAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'nome', 'cpf', 'perfil', 'password1', 'password2'),
+            'fields': ('email', 'nome', 'cpf', 'perfil', 'cidade', 'password1', 'password2'),
         }),
     )
 
@@ -39,4 +39,11 @@ class UsuarioAdmin(UserAdmin):
 class RoleAdmin(admin.ModelAdmin):
     list_display = ('nome', 'ativo', 'descricao')
     list_filter = ('ativo',)
+    search_fields = ('nome',)
+
+
+@admin.register(Cidade)
+class CidadeAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'uf', 'ativo')
+    list_filter = ('uf', 'ativo')
     search_fields = ('nome',)

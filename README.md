@@ -110,6 +110,53 @@ make monitoring-logs   # Ver logs da stack de monitoramento
 make monitoring-down   # Derrubar a stack de monitoramento
 ```
 
+## 💾 Backup e Restore do Banco de Dados
+
+O serviço `db-backup` (ver `./db-backup`) executa `pg_dump` diariamente via cron e mantém uma política de retenção do tipo "diário + semanal":
+
+- **Backups diários**: um por dia, mantidos os `BACKUP_KEEP_DAILY` (padrão 7) mais recentes em `/backups/postgres/daily` (volume `postgres_backups`).
+- **Backups semanais**: no dia da semana definido por `BACKUP_WEEKLY_DAY` (padrão 7 = domingo), o backup do dia também é copiado para `/backups/postgres/weekly`, mantendo os `BACKUP_KEEP_WEEKLY` (padrão 4) mais recentes.
+- **Agendamento**: configurável via `BACKUP_CRON_SCHEDULE` (padrão `0 2 * * *`, todo dia às 2h).
+
+### Gerar um backup manualmente
+
+```bash
+docker compose exec db-backup /scripts/backup.sh
+```
+
+### Restaurar um backup
+
+```bash
+# Lista os backups disponíveis no volume
+docker compose exec db-backup /scripts/restore.sh
+
+# Restaura um arquivo específico (pede confirmação antes de sobrescrever o banco)
+docker compose exec db-backup /scripts/restore.sh /backups/postgres/daily/coleta_premiada_2026-06-18_02-00-00.dump
+```
+
+`pg_restore --clean --if-exists` é usado internamente, ou seja, a restauração **substitui os dados atuais** do banco de destino.
+
+### Variáveis de ambiente
+
+Ver `BACKUP_CRON_SCHEDULE`, `BACKUP_KEEP_DAILY`, `BACKUP_KEEP_WEEKLY` e `BACKUP_WEEKLY_DAY` no `.env.example`.
+
+### ⚠️ Migrando do serviço antigo (`backup-core`)
+
+O serviço `db-backup` substitui o antigo `backup-core` e reaproveita o mesmo volume nomeado (`backup-data`), mas muda:
+
+- **Ponto de montagem**: de `/backups` para `/backups/postgres`.
+- **Formato**: de `.sql.gz` (dump texto + gzip) para `.dump` (formato custom do `pg_dump`, restaurado com `pg_restore`).
+
+Se este volume já tinha backups gerados pelo `backup-core` em produção, esses arquivos `core_*.sql.gz` continuam existindo no volume e passam a aparecer soltos em `/backups/postgres/` (fora de `daily/`/`weekly/`). Eles **não** são enxergados pelo `restore.sh` (que só lista `*.dump`) nem pela política de retenção nova. Antes de subir esta versão em um ambiente com backups antigos:
+
+```bash
+# Inspeciona o que existe no volume antes de migrar
+docker run --rm -v backup-data:/data alpine ls -la /data
+
+# Remove os backups antigos (.sql.gz) depois de confirmar que não são mais necessários
+docker run --rm -v backup-data:/data alpine sh -c "rm -f /data/core_*.sql.gz"
+```
+
 ## 📖 Documentação Adicional
 
 - [Diagramas de Arquitetura](./docs/diagrams/)

@@ -7,6 +7,7 @@ Cobre:
 - /disputes/*                      contestações abertas pelos moradores
 """
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from rest_framework.exceptions import ValidationError
 from accounts.permissions import (
     IsGestor, IsMorador, IsGestorOrSupervisor,
 )
+from accounts.scoping import escopar_por_cidade, usuario_pode_ver_cidade
 
 from .models import RegistroColeta, Evidencia, Contestacao
 from .serializers import (
@@ -46,11 +48,17 @@ class ColetaListCreateView(generics.ListCreateAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular').all().order_by('-data_coleta')
+        qs = RegistroColeta.objects.select_related('imovel', 'imovel__titular').all().order_by('-data_hora_coleta')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
-            qs = qs.filter(imovel__titular=user)
-        
+            qs = qs.filter(
+                Q(imovel__titular=user) | Q(imovel__moradores=user)
+            ).distinct()
+        else:
+            # Gestor/supervisor só enxergam coletas da própria cidade;
+            # gerente_geral enxerga todas.
+            qs = escopar_por_cidade(qs, user, 'imovel__cidade')
+
         # Filtros
         imovel_id = self.request.query_params.get('imovel_id')
         if imovel_id:
@@ -101,6 +109,9 @@ class ColetaDetailView(generics.RetrieveAPIView):
         user = self.request.user
         # Morador só acessa coletas dos próprios imóveis.
         if getattr(user, 'perfil', None) == 'morador' and obj.imovel.titular_id != user.id:
+            self.permission_denied(self.request)
+        # Gestor/supervisor só acessam coletas da própria cidade.
+        if not usuario_pode_ver_cidade(user, obj.imovel.cidade):
             self.permission_denied(self.request)
         return obj
 
@@ -164,7 +175,11 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
             qs = qs.filter(aberta_por=user)
-        
+        else:
+            # Gestor/supervisor só enxergam contestações da própria cidade;
+            # gerente_geral enxerga todas.
+            qs = escopar_por_cidade(qs, user, 'coleta__imovel__cidade')
+
         # Filtros
         status_filter = self.request.query_params.get('status')
         if status_filter:
@@ -203,6 +218,9 @@ class ContestacaoDetailView(generics.RetrieveUpdateAPIView):
         user = self.request.user
         # Morador só vê suas próprias contestações.
         if getattr(user, 'perfil', None) == 'morador' and obj.aberta_por_id != user.id:
+            self.permission_denied(self.request)
+        # Gestor/supervisor só acessam contestações da própria cidade.
+        if not usuario_pode_ver_cidade(user, obj.coleta.imovel.cidade):
             self.permission_denied(self.request)
         return obj
 
