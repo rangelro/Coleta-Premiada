@@ -143,6 +143,68 @@ services:
           cpus: "0.1"
           memory: 64M
 
+  # Manutencao automatizada do PostgreSQL:
+  # - cleanup_logs: diario as 02:15
+  # - vacuum_analyze: diario as 02:45
+  # - reindex: semanal aos domingos as 03:30
+  postgres-maintenance:
+    image: postgres:16-alpine
+    env_file: .env
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGHOST: core-db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER}
+      PGDATABASE: ${POSTGRES_DB}
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
+      LOG_CLEANUP_BATCH_SIZE: ${LOG_CLEANUP_BATCH_SIZE:-5000}
+    volumes:
+      - ./scripts/maintenance:/maintenance:ro
+    command: sh /maintenance/postgres_cron.sh
+    depends_on:
+      core-db:
+        condition: service_healthy
+    networks:
+      - core-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  # Manutencao automatizada dos logs do MongoDB externo (ms-db).
+  # Este repositorio nao define o servico Mongo; o script usa a rede compartilhada.
+  mongo-maintenance:
+    image: mongo:7
+    env_file: .env
+    environment:
+      MONGO_HOST: ms-db
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_DB: ${MONGO_INITDB_DATABASE:-coleta_db}
+      MONGO_AUTH_DB: ${MONGO_AUTH_DB:-admin}
+      MONGO_LOG_COLLECTION: ${MONGO_LOG_COLLECTION:-audit_logs}
+      MONGO_LOG_DATE_FIELD: ${MONGO_LOG_DATE_FIELD:-created_at}
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
+    volumes:
+      - ./scripts/maintenance:/maintenance:ro
+    command: >
+      bash -c "while true; do sh /maintenance/cleanup_mongo_logs.sh; sleep 86400; done"
+    networks:
+      - coleta-shared
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
   core-consumer:
     build:
       context: ./core
