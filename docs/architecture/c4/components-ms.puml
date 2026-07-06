@@ -17,9 +17,10 @@ Container_Boundary(ms, "MS de Coleta - Django/DRF") {
     Component(coleta_managers, "coleta.managers", "Managers", "Consultas e upsert de imoveis vindos do Core.")
     Component(storage_service, "coleta.services.storage.upload_foto_coleta", "Servico MinIO", "Envia foto de coleta e retorna URL.")
     Component(fila_service, "coleta.services.fila.publicar_coleta", "Publisher RabbitMQ", "Publica coletas confirmadas na fila coletas.")
+    Component(reenviar_coletas_cmd, "coleta.management.commands.reenviar_coletas", "Management command", "Reenvia coletas pendentes para RabbitMQ.")
 }
 
-Container(ms_consumer, "MS Consumer", "Django management command", "Container/processo separado no C2: executa coleta.management.commands.consumir_imoveis.")
+Container(ms_consumer, "MS Consumer", "Django management command", "consumir_imoveis: consome fila imoveis e atualiza cache operacional.")
 ContainerDb(ms_db, "MS MongoDB", "MongoDB 7", "Banco operacional do MS.")
 ContainerDb(minio, "MinIO", "S3 compativel", "Bucket de fotos/evidencias.")
 ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis e coletas.")
@@ -41,9 +42,12 @@ Rel(coleta_models, ms_db, "Persistencia")
 Rel(coleta_managers, coleta_models, "Upsert/consultas")
 Rel(storage_service, minio, "S3 API")
 Rel(fila_service, rabbitmq, "Publica fila coletas")
+Rel(reenviar_coletas_cmd, coleta_models, "Busca pendentes")
+Rel(reenviar_coletas_cmd, fila_service, "Republica coletas")
 
 Rel(ms_consumer, rabbitmq, "Consome fila imoveis", "AMQP")
 Rel(ms_consumer, ms_db, "Upsert de Imovel operacional", "MongoDB")
+Rel(ms_consumer, coleta_managers, "Reusa managers (mesmo codebase)")
 
 Rel(core, rabbitmq, "Publica imoveis e consome coletas", "AMQP")
 

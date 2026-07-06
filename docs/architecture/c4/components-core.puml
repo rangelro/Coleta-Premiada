@@ -28,7 +28,7 @@ Container_Boundary(core, "Core API - Django/DRF") {
     Component(audit, "custom_audit", "Middleware, signals, models e API", "Registra operacoes criticas e expoe logs/exportacao.")
 }
 
-Container(core_consumer, "Core Consumer", "Django management command", "Container/processo separado no C2: executa collection.management.commands.consume_queue.")
+Container(core_consumer, "Core Consumer", "Django management command", "consume_queue: consome fila coletas e persiste RegistroColeta.")
 ContainerDb(core_db, "Core PostgreSQL", "PostgreSQL 16", "Banco do Core.")
 ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis/coletas e broker Celery.")
 System_Ext(nominatim, "Nominatim", "Geocodificacao.")
@@ -58,6 +58,9 @@ Rel(collection_views, collection_models, "CRUD")
 Rel(collection_models, core_db, "Persistencia")
 Rel(core_consumer, rabbitmq, "Consome fila coletas", "AMQP")
 Rel(core_consumer, core_db, "Cria RegistroColeta e atualiza SaldoPontos", "PostgreSQL")
+Rel(core_consumer, collection_models, "Reusa models (mesmo codebase)")
+Rel(core_consumer, program_models, "Reusa models de dominio (mesmo codebase)")
+Rel(core_consumer, program_rules, "Reusa regra de teto (mesmo codebase)")
 
 Rel(reports_views, reports_service, "Gera relatorio")
 Rel(reports_service, collection_models, "Consulta agregacoes")
