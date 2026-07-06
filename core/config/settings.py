@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'chave-local-insegura')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'colocar_chave_do_django_aqui')
 DEBUG = os.getenv('DEBUG', 'True').strip().lower() == 'true'
 ALLOWED_HOSTS = ['*']
 

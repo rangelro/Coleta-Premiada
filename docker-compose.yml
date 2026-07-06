@@ -330,22 +330,25 @@ services:
           memory: 32M
 
   # ─── BACKUP ───────────────────────────────────────────────────────────────
+  # Backup agendado (cron) do PostgreSQL via pg_dump, com retenção diária/semanal.
+  # Scripts e documentação em ./db-backup.
 
-  backup-core:
-    image: postgres:16-alpine
+  db-backup:
+    build:
+      context: ./db-backup
     env_file: .env
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGHOST: core-db
-      PGUSER: ${POSTGRES_USER}
-      PGDATABASE: ${POSTGRES_DB}
-    volumes:
-      - backup-data:/backups
-      - ./scripts/backup-core.sh:/backup.sh:ro
-    command: sh /backup.sh
+      POSTGRES_HOST: core-db
+      POSTGRES_PORT: "5432"
+      BACKUP_CRON_SCHEDULE: ${BACKUP_CRON_SCHEDULE:-0 2 * * *}
+      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
+      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
+      BACKUP_WEEKLY_DAY: ${BACKUP_WEEKLY_DAY:-7}
     depends_on:
       core-db:
         condition: service_healthy
+    volumes:
+      - backup-data:/backups/postgres
     networks:
       - core-network
     restart: unless-stopped
@@ -369,7 +372,7 @@ volumes:
 
 # ─── NETWORKS ─────────────────────────────────────────────────────────────────
 #
-#  core-network          — core-db, core, core-celery*, core-consumer
+#  core-network          — core-db, core, core-celery*, core-consumer, db-backup
 #  storage-network       — minio (acessado por core)
 #  messaging-network     — rabbitmq + todos os produtores/consumidores
 #  coleta-observability  — rede externa criada por ../coleta-observability
