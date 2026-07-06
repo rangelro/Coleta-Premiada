@@ -1,0 +1,2389 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-07-06T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v8.0.0",
+  "resources": [
+    {
+      "_id": "wrk_gerente_geral",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Coleta Premiada - gerente_geral & escopo por cidade",
+      "description": "Colecao baseada em docs/gerente_geral_endpoints.md e docs/gerente_geral_roteiro_teste.md. Cobre os endpoints do core (Django/DRF) afetados pelo perfil `gerente_geral` e pelo escopo por cidade de gestor/supervisor.\n\nFluxo sugerido: rode as requisicoes da pasta '0 - Autenticacao' na ordem, copiando o campo `access` de cada resposta para a variavel de ambiente correspondente (token_geral, token_gestor_fortaleza, token_gestor_sobral, token_morador1) antes de seguir para as demais pastas.",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_gerente_geral_base",
+      "_type": "environment",
+      "parentId": "wrk_gerente_geral",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8001/api",
+        "email_geral": "geral@ex.com",
+        "email_gestor_fortaleza": "gestor.fortaleza@ex.com",
+        "email_gestor_sobral": "gestor.sobral@ex.com",
+        "email_morador1": "morador1@ex.com",
+        "password": "senha1234",
+        "token_geral": "",
+        "token_gestor_fortaleza": "",
+        "token_gestor_sobral": "",
+        "token_morador1": "",
+        "refresh_token": "",
+        "cidade_fortaleza_id": "1",
+        "cidade_sobral_id": "2",
+        "user_id": "1",
+        "role_id": "1",
+        "imovel_fortaleza_id": "1",
+        "programa_id": "1",
+        "coleta_id": "1",
+        "dispute_id": "1"
+      },
+      "dataPropertyOrder": null,
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "0 - Autenticacao",
+      "description": "Login por persona (JWT) e portal /auth/me.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "fld_cidades",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "1 - Cidades",
+      "description": "Catalogo de cidades atendidas (novo, gerente_geral).",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "fld_usuarios",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "2 - Usuarios (Gestao)",
+      "description": "Criacao/edicao administrativa de usuarios.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 2000
+    },
+    {
+      "_id": "fld_roles",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "3 - Roles",
+      "description": "Papeis/permissoes granulares.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 3000
+    },
+    {
+      "_id": "fld_properties",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "4 - Imoveis (Properties)",
+      "description": "CRUD de imoveis, escopado por cidade.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 4000
+    },
+    {
+      "_id": "fld_programs",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "5 - Programas",
+      "description": "CRUD de programas e regras (broadening de permissao).",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 5000
+    },
+    {
+      "_id": "fld_consolidations",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "6 - Consolidacoes",
+      "description": "Execucao/consulta de consolidacoes de ciclo.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 6000
+    },
+    {
+      "_id": "fld_benefits",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "7 - Beneficios",
+      "description": "Saldos consolidados por imovel, escopado por cidade.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 7000
+    },
+    {
+      "_id": "fld_reports",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "8 - Relatorios",
+      "description": "Relatorios agregados, escopados por cidade.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 8000
+    },
+    {
+      "_id": "fld_scoring",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "9 - Constante de Pontuacao",
+      "description": "Constante global do sistema.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 9000
+    },
+    {
+      "_id": "fld_collections",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "10 - Coletas (Collections)",
+      "description": "Registros de coleta, escopado por cidade.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 10000
+    },
+    {
+      "_id": "fld_disputes",
+      "_type": "request_group",
+      "parentId": "wrk_gerente_geral",
+      "name": "11 - Contestacoes (Disputes)",
+      "description": "Contestacoes abertas por moradores.",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 11000
+    },
+    {
+      "_id": "req_login_geral",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login - gerente_geral",
+      "description": "Copie `access` da resposta para a env var token_geral.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/token/",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email_geral }}\",\n  \"password\": \"{{ _.password }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_login_gestor_fortaleza",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login - gestor Fortaleza",
+      "description": "Copie `access` da resposta para a env var token_gestor_fortaleza.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/token/",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email_gestor_fortaleza }}\",\n  \"password\": \"{{ _.password }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_login_gestor_sobral",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login - gestor Sobral",
+      "description": "Copie `access` da resposta para a env var token_gestor_sobral.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/token/",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email_gestor_sobral }}\",\n  \"password\": \"{{ _.password }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_login_morador1",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login - morador1",
+      "description": "Copie `access` da resposta para a env var token_morador1.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/token/",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email_morador1 }}\",\n  \"password\": \"{{ _.password }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_token_refresh",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Refresh token",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/token/refresh/",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refresh\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_auth_create",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "POST auth - cadastro publico (sempre morador)",
+      "description": "Cadastro publico (AllowAny). Sempre cria perfil='morador', mesmo se um campo `perfil` for enviado no corpo (e' ignorado). Resposta 201 nao inclui `id` nem `perfil`.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/auth",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"morador1@ex.com\",\n  \"cpf\": \"444.444.444-44\",\n  \"nome\": \"Morador Um\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_auth_me_get",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "GET auth/me",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/auth/me",
+      "metaSortKey": 7000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_auth_me_patch",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "PATCH auth/me",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/accounts/auth/me",
+      "metaSortKey": 8000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Novo Nome\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_auth_me_delete",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "DELETE auth/me (soft-delete da propria conta)",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/accounts/auth/me",
+      "metaSortKey": 9000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_logout",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "POST auth/logout",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/auth/logout",
+      "metaSortKey": 10000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refresh\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_list",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "GET cidades (qualquer autenticado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/cidades",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_create_fortaleza",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "POST cidades - Fortaleza (so gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/cidades",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Fortaleza\",\n  \"uf\": \"CE\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_create_sobral",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "POST cidades - Sobral (so gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/cidades",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Sobral\",\n  \"uf\": \"CE\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_create_duplicada",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "POST cidades - nome duplicado (400 esperado)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/cidades",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Fortaleza\",\n  \"uf\": \"CE\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_create_como_gestor",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "POST cidades - como gestor (403 esperado)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/cidades",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Juazeiro do Norte\",\n  \"uf\": \"CE\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_cidades_patch",
+      "_type": "request",
+      "parentId": "fld_cidades",
+      "name": "PATCH cidades/:id (so gerente_geral)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/accounts/cidades/{{ _.cidade_sobral_id }}",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ativo\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_create_gestor_fortaleza",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - criar gestor Fortaleza",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"gestor.fortaleza@ex.com\",\n  \"cpf\": \"111.111.111-11\",\n  \"nome\": \"Gestor Fortaleza\",\n  \"perfil\": \"gestor\",\n  \"cidade\": \"{{ _.cidade_fortaleza_id }}\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_create_gestor_sobral",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - criar gestor Sobral",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"gestor.sobral@ex.com\",\n  \"cpf\": \"555.555.555-55\",\n  \"nome\": \"Gestor Sobral\",\n  \"perfil\": \"gestor\",\n  \"cidade\": \"{{ _.cidade_sobral_id }}\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_gestor_cria_outro_gestor",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - gestor cria outro gestor (cidade forcada)",
+      "description": "Envia propositalmente a cidade de Sobral; o resultado deve vir com a cidade do gestor (Fortaleza), ignorando o valor enviado.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"outro.gestor@ex.com\",\n  \"cpf\": \"222.222.222-22\",\n  \"nome\": \"Outro Gestor\",\n  \"perfil\": \"gestor\",\n  \"cidade\": \"{{ _.cidade_sobral_id }}\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_gestor_cria_gerente_geral",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - gestor tenta criar gerente_geral (400 esperado)",
+      "description": "Esperado 400: {\"perfil\": [\"Um gestor não pode criar ou promover usuários para gerente_geral.\"]}",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 3010,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"outro.geral@ex.com\",\n  \"cpf\": \"999.999.999-99\",\n  \"nome\": \"Outro Geral\",\n  \"perfil\": \"gerente_geral\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_gestor_cria_supervisor",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - gestor cria supervisor (cidade forcada)",
+      "description": "Envia propositalmente a cidade de Sobral; o resultado deve vir com a cidade do gestor (Fortaleza), ignorando o valor enviado.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"supervisor.fortaleza@ex.com\",\n  \"cpf\": \"333.333.333-33\",\n  \"nome\": \"Supervisor Fortaleza\",\n  \"perfil\": \"supervisor\",\n  \"cidade\": \"{{ _.cidade_sobral_id }}\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_cidade_nao_permitida",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - perfil sem cidade propria mas cidade enviada (400 esperado)",
+      "description": "Esperado 400: {\"cidade\": [\"Esse perfil não deve ter cidade própria.\"]}",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"bad.morador@ex.com\",\n  \"cpf\": \"666.666.666-66\",\n  \"nome\": \"Bad Morador\",\n  \"perfil\": \"morador\",\n  \"cidade\": \"{{ _.cidade_fortaleza_id }}\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_cidade_obrigatoria",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "POST users - gestor sem cidade (400 esperado)",
+      "description": "Esperado 400: {\"cidade\": [\"Cidade obrigatória para o perfil informado.\"]}",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"bad.gestor@ex.com\",\n  \"cpf\": \"888.888.888-88\",\n  \"nome\": \"Bad Gestor\",\n  \"perfil\": \"gestor\",\n  \"password\": \"senha1234\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_list",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "GET users (lista, filtros e paginacao)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/users",
+      "metaSortKey": 7000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "parameters": [
+        {
+          "name": "perfil",
+          "value": "gestor",
+          "disabled": false
+        },
+        {
+          "name": "ativo",
+          "value": "true",
+          "disabled": false
+        },
+        {
+          "name": "search",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "page",
+          "value": "1",
+          "disabled": false
+        },
+        {
+          "name": "page_size",
+          "value": "20",
+          "disabled": false
+        }
+      ],
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_detail",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "GET users/:id",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/users/{{ _.user_id }}",
+      "metaSortKey": 8000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_patch",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "PATCH users/:id",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/accounts/users/{{ _.user_id }}",
+      "metaSortKey": 9000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Nome Atualizado\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_delete",
+      "_type": "request",
+      "parentId": "fld_usuarios",
+      "name": "DELETE users/:id (soft-delete, 403 se for a propria conta)",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/accounts/users/{{ _.user_id }}",
+      "metaSortKey": 10000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_roles_list",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "GET roles",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/roles",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_roles_create",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "POST roles (so gestor/gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/roles",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Auditor\",\n  \"descricao\": \"Acesso de auditoria\",\n  \"ativo\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_roles_detail",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "GET roles/:id",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/accounts/roles/{{ _.role_id }}",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_roles_patch",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "PATCH roles/:id (so gestor/gerente_geral)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/accounts/roles/{{ _.role_id }}",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ativo\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_role_add",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "POST users/:id/roles/:roleId (vincula papel)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/accounts/users/{{ _.user_id }}/roles/{{ _.role_id }}",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_users_role_remove",
+      "_type": "request",
+      "parentId": "fld_roles",
+      "name": "DELETE users/:id/roles/:roleId (remove vinculo)",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/accounts/users/{{ _.user_id }}/roles/{{ _.role_id }}",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_create_cidade_invalida",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "POST properties - cidade nao cadastrada (400 esperado)",
+      "description": "Esperado 400: {\"cidade\": [\"Cidade não cadastrada ou inativa. Selecione uma das cidades disponíveis.\"]}",
+      "method": "POST",
+      "url": "{{ _.base_url }}/program/properties",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"inscricao\": \"IMV-001\",\n  \"titular\": \"{{ _.user_id }}\",\n  \"cep\": \"60000-000\",\n  \"logradouro\": \"Rua A\",\n  \"numero\": \"100\",\n  \"bairro\": \"Centro\",\n  \"cidade\": \"Recife\",\n  \"estado\": \"PE\",\n  \"num_moradores\": 1\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_morador1 }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_create",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "POST properties - cidade valida (201)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/program/properties",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"inscricao\": \"IMV-001\",\n  \"titular\": \"{{ _.user_id }}\",\n  \"cep\": \"60000-000\",\n  \"logradouro\": \"Rua A\",\n  \"numero\": \"100\",\n  \"bairro\": \"Centro\",\n  \"cidade\": \"Fortaleza\",\n  \"estado\": \"CE\",\n  \"num_moradores\": 1\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_morador1 }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_list_gestor_fortaleza",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "GET properties - gestor Fortaleza (ve o imovel)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/properties",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_list_gestor_sobral",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "GET properties - gestor Sobral (lista vazia esperada)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/properties",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_list_geral",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "GET properties - gerente_geral (ve todos)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/properties",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_detail_bloqueado",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "GET properties/:id - gestor de outra cidade (403 esperado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/properties/{{ _.imovel_fortaleza_id }}",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_detail_geral",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "GET properties/:id - gerente_geral (200 esperado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/properties/{{ _.imovel_fortaleza_id }}",
+      "metaSortKey": 7000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_patch",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "PATCH properties/:id (gestor/supervisor/gerente_geral)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/program/properties/{{ _.imovel_fortaleza_id }}",
+      "metaSortKey": 8000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"bairro\": \"Centro\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_add_user",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "POST properties/:id/users - vincula morador",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/program/properties/{{ _.imovel_fortaleza_id }}/users",
+      "metaSortKey": 9000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"user_id\": \"{{ _.user_id }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_properties_remove_user",
+      "_type": "request",
+      "parentId": "fld_properties",
+      "name": "DELETE properties/:id/users/:userId - desvincula morador",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/program/properties/{{ _.imovel_fortaleza_id }}/users/{{ _.user_id }}",
+      "metaSortKey": 10000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_list",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "GET programs",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/programs",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_create",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "POST programs (gestor/gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/program/programs",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Programa 2026\",\n  \"descricao\": \"Ciclo anual\",\n  \"data_inicio\": \"2026-01-01\",\n  \"data_fim\": \"2026-12-31\",\n  \"ativo\": true,\n  \"desconto_maximo\": \"40.00\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_detail",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "GET programs/:id",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/programs/{{ _.programa_id }}",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_patch",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "PATCH programs/:id (gestor/gerente_geral)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/program/programs/{{ _.programa_id }}",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ativo\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_rules_get",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "GET programs/:id/rules",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/programs/{{ _.programa_id }}/rules",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_programs_rules_patch",
+      "_type": "request",
+      "parentId": "fld_programs",
+      "name": "PATCH programs/:id/rules (gestor/gerente_geral)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/program/programs/{{ _.programa_id }}/rules",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"pontos_por_real\": \"1.00\",\n  \"minimo_para_beneficio\": \"10.00\",\n  \"permite_acumulo_ciclos\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_consolidations_run",
+      "_type": "request",
+      "parentId": "fld_consolidations",
+      "name": "POST consolidations/run (so gestor/gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/program/consolidations/run",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"programa_id\": \"{{ _.programa_id }}\",\n  \"ciclo\": \"07-2026\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_consolidations_list",
+      "_type": "request",
+      "parentId": "fld_consolidations",
+      "name": "GET consolidations (gestor/supervisor/gerente_geral)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/consolidations",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_consolidations_detail",
+      "_type": "request",
+      "parentId": "fld_consolidations",
+      "name": "GET consolidations/:id",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/consolidations/1",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_benefits_list_sobral",
+      "_type": "request",
+      "parentId": "fld_benefits",
+      "name": "GET benefits - gestor Sobral (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/benefits",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_benefits_list_fortaleza",
+      "_type": "request",
+      "parentId": "fld_benefits",
+      "name": "GET benefits - gestor Fortaleza (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/benefits",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_benefits_list_geral",
+      "_type": "request",
+      "parentId": "fld_benefits",
+      "name": "GET benefits - gerente_geral (todas as cidades)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/benefits",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_benefits_detail",
+      "_type": "request",
+      "parentId": "fld_benefits",
+      "name": "GET benefits/:propertyId/:programaId",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/benefits/{{ _.imovel_fortaleza_id }}/{{ _.programa_id }}",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_participation_sobral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/participation - gestor Sobral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/participation",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_participation_fortaleza",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/participation - gestor Fortaleza",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/participation",
+      "metaSortKey": 1100,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_participation_geral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/participation - gerente_geral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/participation",
+      "metaSortKey": 1200,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_ranking_sobral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/ranking - gestor Sobral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/ranking",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_ranking_fortaleza",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/ranking - gestor Fortaleza",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/ranking",
+      "metaSortKey": 2100,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_ranking_geral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/ranking - gerente_geral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/ranking",
+      "metaSortKey": 2200,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_impact_sobral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/impact - gestor Sobral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/impact",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_impact_fortaleza",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/impact - gestor Fortaleza",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/impact",
+      "metaSortKey": 3100,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_reports_impact_geral",
+      "_type": "request",
+      "parentId": "fld_reports",
+      "name": "GET reports/impact - gerente_geral",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/reports/impact",
+      "metaSortKey": 3200,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_scoring_get",
+      "_type": "request",
+      "parentId": "fld_scoring",
+      "name": "GET scoring-constant (qualquer autenticado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/program/scoring-constant",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_scoring_patch",
+      "_type": "request",
+      "parentId": "fld_scoring",
+      "name": "PATCH scoring-constant (so supervisor)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/program/scoring-constant",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"pontos_por_kg\": \"1.50\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_list_sobral",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections - gestor Sobral (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_list_fortaleza",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections - gestor Fortaleza (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_list_geral",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections - gerente_geral (todas as cidades)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_create",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "POST collections (gestor/supervisor/gerente_geral)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/collection/collections",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id_microservico\": \"MS-TEST-001\",\n  \"imovel\": \"{{ _.imovel_fortaleza_id }}\",\n  \"peso_kg\": \"10\",\n  \"data_hora_coleta\": \"2026-07-01T10:00:00Z\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_detail_bloqueado",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections/:id - gestor de outra cidade (403 esperado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections/{{ _.coleta_id }}",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_collections_detail_geral",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections/:id - gerente_geral (200 esperado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections/{{ _.coleta_id }}",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_evidences_list",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "GET collections/:id/evidences",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/collections/{{ _.coleta_id }}/evidences",
+      "metaSortKey": 7000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_evidences_create",
+      "_type": "request",
+      "parentId": "fld_collections",
+      "name": "POST collections/:id/evidences",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/collection/collections/{{ _.coleta_id }}/evidences",
+      "metaSortKey": 8000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"descricao\": \"Foto da coleta\",\n  \"arquivo_url\": \"https://exemplo.com/foto.jpg\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_list_sobral",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "GET disputes - gestor Sobral (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/disputes",
+      "metaSortKey": 1000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_list_fortaleza",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "GET disputes - gestor Fortaleza (so a propria cidade)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/disputes",
+      "metaSortKey": 2000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_fortaleza }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_list_geral",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "GET disputes - gerente_geral (todas as cidades)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/disputes",
+      "metaSortKey": 3000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_create",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "POST disputes (somente morador)",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/collection/disputes",
+      "metaSortKey": 4000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"coleta\": \"{{ _.coleta_id }}\",\n  \"motivo\": \"Peso incorreto\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_morador1 }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_detail_bloqueado",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "GET disputes/:id - gestor de outra cidade (403 esperado)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/collection/disputes/{{ _.dispute_id }}",
+      "metaSortKey": 5000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_patch_bloqueado",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "PATCH disputes/:id - gestor de outra cidade (403 esperado)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/collection/disputes/{{ _.dispute_id }}",
+      "metaSortKey": 6000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"aceita\",\n  \"resposta\": \"ok\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_gestor_sobral }}",
+        "prefix": "Bearer"
+      }
+    },
+    {
+      "_id": "req_disputes_patch_geral",
+      "_type": "request",
+      "parentId": "fld_disputes",
+      "name": "PATCH disputes/:id - gerente_geral (200 esperado, qualquer cidade)",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/collection/disputes/{{ _.dispute_id }}",
+      "metaSortKey": 7000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"aceita\",\n  \"resposta\": \"ok\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token_geral }}",
+        "prefix": "Bearer"
+      }
+    }
+  ]
+}
