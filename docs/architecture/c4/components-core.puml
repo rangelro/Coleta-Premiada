@@ -57,10 +57,11 @@ Rel(program_tasks, messaging, "Republica Imovel geocodificado")
 Rel(collection_views, collection_models, "CRUD")
 Rel(collection_models, core_db, "Persistencia")
 Rel(core_consumer, rabbitmq, "Consome fila coletas", "AMQP")
-Rel(core_consumer, core_db, "Cria RegistroColeta e atualiza SaldoPontos", "PostgreSQL")
-Rel(core_consumer, collection_models, "Reusa models (mesmo codebase)")
-Rel(core_consumer, program_models, "Reusa models de dominio (mesmo codebase)")
-Rel(core_consumer, program_rules, "Reusa regra de teto (mesmo codebase)")
+' Nota: core_consumer roda como processo separado (management command), mas reutiliza
+' os mesmos models/regras de negocio do codebase do Core API (mesmo repositorio).
+Rel(core_consumer, collection_models, "Cria RegistroColeta")
+Rel(core_consumer, program_models, "Atualiza SaldoPontos")
+Rel(core_consumer, program_rules, "Aplica teto")
 
 Rel(reports_views, reports_service, "Gera relatorio")
 Rel(reports_service, collection_models, "Consulta agregacoes")

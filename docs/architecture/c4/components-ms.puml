@@ -46,8 +46,9 @@ Rel(reenviar_coletas_cmd, coleta_models, "Busca pendentes")
 Rel(reenviar_coletas_cmd, fila_service, "Republica coletas")
 
 Rel(ms_consumer, rabbitmq, "Consome fila imoveis", "AMQP")
-Rel(ms_consumer, ms_db, "Upsert de Imovel operacional", "MongoDB")
-Rel(ms_consumer, coleta_managers, "Reusa managers (mesmo codebase)")
+' Nota: ms_consumer roda como processo separado (management command), mas reutiliza
+' os mesmos managers do codebase do MS de Coleta (mesmo repositorio).
+Rel(ms_consumer, coleta_managers, "Faz upsert de imoveis")
 
 Rel(core, rabbitmq, "Publica imoveis e consome coletas", "AMQP")
 
