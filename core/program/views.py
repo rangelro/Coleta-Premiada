@@ -99,13 +99,30 @@ class ImovelDetailView(generics.RetrieveUpdateAPIView):
             return [IsGestorOrSupervisor()]
         return [IsAuthenticated()]
 
+    def get_object(self):
+        # Sobrescreve a busca padrão para permitir localizar o imóvel pelo ID primário (inteiro)
+        # ou pela inscrição/IPTU (string), facilitando a integração com o microsserviço.
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field or 'pk'
+        val = self.kwargs[lookup_url_kwarg]
+        try:
+            # Tenta recuperar o imóvel pela chave primária (ID do Postgres)
+            return queryset.get(pk=val)
+        except (ValueError, queryset.model.DoesNotExist):
+            # Se falhar (ex: valor não é inteiro ou não existe), busca pela inscrição imobiliária
+            return get_object_or_404(queryset, inscricao=val)
+
 
 class ImovelAddUserView(APIView):
     """ POST /properties/:id/users — vincula um morador a um imóvel."""
     permission_classes = [IsGestorOrSupervisor]
 
     def post(self, request, id):
-        imovel = get_object_or_404(Imovel, pk=id)
+        # Vincula um morador ao imóvel. Busca de forma flexível por ID primário ou inscrição.
+        try:
+            imovel = Imovel.objects.get(pk=id)
+        except (ValueError, Imovel.DoesNotExist):
+            imovel = get_object_or_404(Imovel, inscricao=id)
         user_id = request.data.get('user_id') or request.data.get('userId')
         if not user_id:
             return Response({'detail': 'user_id obrigatório.'}, status=400)
@@ -126,7 +143,11 @@ class ImovelRemoveUserView(APIView):
     permission_classes = [IsGestorOrSupervisor]
 
     def delete(self, request, id, userId):
-        imovel = get_object_or_404(Imovel, pk=id)
+        # Remove o vínculo de um morador com o imóvel. Busca flexível por ID primário ou inscrição.
+        try:
+            imovel = Imovel.objects.get(pk=id)
+        except (ValueError, Imovel.DoesNotExist):
+            imovel = get_object_or_404(Imovel, inscricao=id)
 
         if imovel.titular_id == int(userId):
             return Response(
@@ -426,13 +447,26 @@ class ReportImpactView(APIView):
     def get(self, request):
         from collection.models import RegistroColeta
 
-        total_coletas = RegistroColeta.objects.count()
-        total_pontos = RegistroColeta.objects.aggregate(t=Sum('pontuacao'))['t'] or 0
+        coletas = RegistroColeta.objects.all()
+        saldos = SaldoPontos.objects.all()
+
+        programa_id = request.query_params.get('programa_id')
+
+        # Filtra por programa se fornecido
+        if programa_id:
+            try:
+                coletas = coletas.filter(programa_id=int(programa_id))
+                saldos = saldos.filter(programa_id=int(programa_id))
+            except ValueError:
+                raise ValidationError({'programa_id': 'Deve ser um número inteiro.'})
+
+        total_coletas = coletas.count()
+        total_pontos = coletas.aggregate(t=Sum('pontuacao'))['t'] or 0
         total_imoveis_participantes = (
-            RegistroColeta.objects.values('imovel').distinct().count()
+            coletas.values('imovel').distinct().count()
         )
         total_desconto_concedido = (
-            SaldoPontos.objects.aggregate(t=Sum('desconto_percentual'))['t'] or 0
+            saldos.aggregate(t=Sum('desconto_percentual'))['t'] or 0
         )
 
         return Response({

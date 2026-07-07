@@ -3,11 +3,16 @@ from .models import RegistroColeta, Evidencia, Contestacao
 
 
 class RegistroColetaSerializer(serializers.ModelSerializer):
+    #Adicionados campos para a leitura dos dados do imovel e programa pelo front
+    imovel_inscricao = serializers.CharField(source='imovel.inscricao', read_only=True)
+    titular_nome = serializers.CharField(source='imovel.titular.nome', read_only=True)
+    programa_nome = serializers.CharField(source='programa.nome', read_only=True)
+
     class Meta:
         model = RegistroColeta
         fields = [
-            'id', 'id_microservico', 'imovel', 'programa', 'pontuacao',
-            'data_hora_coleta', 'peso_kg',
+            'id', 'id_microservico', 'imovel', 'imovel_inscricao', 'titular_nome',
+            'programa', 'programa_nome', 'pontuacao', 'data_hora_coleta', 'peso_kg',
         ]
         read_only_fields = ['id']
 

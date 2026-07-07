@@ -7,10 +7,13 @@ from .models import (
 
 
 class ImovelSerializer(serializers.ModelSerializer):
+    #Adicionados campos para a leitura dos dados do titular pelo front
+    titular_nome = serializers.CharField(source='titular.nome', read_only=True)
+
     class Meta:
         model = Imovel
         fields = [
-            'id', 'inscricao', 'titular', 'cep', 'logradouro', 'numero',
+            'id', 'inscricao', 'titular', 'titular_nome', 'cep', 'logradouro', 'numero',
             'complemento', 'bairro', 'cidade', 'estado', 'num_moradores',
             'latitude', 'longitude', 'geocodificacao_falhou',
             'ativo', 'data_adesao',

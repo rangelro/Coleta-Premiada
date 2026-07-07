@@ -27,7 +27,7 @@ from .serializers import (
     UsuarioManagerUpdateSerializer,
     RoleSerializer,
 )
-from .permissions import IsGestor
+from .permissions import IsGestor, IsGestorOrSupervisor
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +193,10 @@ class UserManagerView(generics.ListCreateAPIView):
     🔒 GET  /users — Lista, filtra e pagina usuários (só Gestor).
     🔒 POST /users — Cria um novo usuário com qualquer perfil (só Gestor).
     """
-    permission_classes = [IsGestor]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsGestorOrSupervisor()]
+        return [IsGestor()]
     pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
