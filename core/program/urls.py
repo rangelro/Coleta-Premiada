@@ -14,9 +14,9 @@ from .views import (
 urlpatterns = [
     # /properties
     path('properties',                 ImovelListCreateView.as_view(), name='imovel-list-create'),
-    path('properties/<int:pk>',        ImovelDetailView.as_view(),     name='imovel-detail'),
-    path('properties/<int:id>/users',  ImovelAddUserView.as_view(),    name='imovel-add-user'),
-    path('properties/<int:id>/users/<int:userId>',
+    path('properties/<str:pk>',        ImovelDetailView.as_view(),     name='imovel-detail'),
+    path('properties/<str:id>/users',  ImovelAddUserView.as_view(),    name='imovel-add-user'),
+    path('properties/<str:id>/users/<int:userId>',
          ImovelRemoveUserView.as_view(), name='imovel-remove-user'),
 
     # /programs

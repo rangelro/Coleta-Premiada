@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Imovel)
 def publicar_imovel(sender, instance, created, **kwargs):
+    """
+    Sinal do Django disparado automaticamente após a criação ou atualização de um Imóvel.
+    Publica os dados do imóvel (incluindo o número de moradores) no RabbitMQ para
+    sincronização automática com o banco MongoDB do microsserviço de coletas.
+    """
     try:
         from messaging.producer import publish_morador
         publish_morador({
@@ -23,6 +28,7 @@ def publicar_imovel(sender, instance, created, **kwargs):
             'latitude': float(instance.latitude) if instance.latitude is not None else None,
             'longitude': float(instance.longitude) if instance.longitude is not None else None,
             'ativo': instance.ativo,
+            'num_moradores': instance.num_moradores,
             'acao': 'adesao_programa' if created else 'atualizacao_imovel',
         })
         acao_log = 'criação' if created else 'atualização'
