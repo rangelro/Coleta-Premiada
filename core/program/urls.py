@@ -6,12 +6,17 @@ from .views import (
     ProgramaRulesView,
     ConsolidacaoRunView, ConsolidacaoListView, ConsolidacaoDetailView,
     BeneficioListView, BeneficioDetailView,
-    ReportParticipationView,
+    ReportParticipationView, ReportCollectionsByCycleView,
     ReportRankingView, ReportImpactView,
-    ConstantePontuacaoView,
+    ConstantePontuacaoView, CicloViewSet
 )
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter(trailing_slash=False)
+router.register(r'cycles', CicloViewSet, basename='ciclo')
 
 urlpatterns = [
+    *router.urls,
     # /properties
     path('properties',                 ImovelListCreateView.as_view(), name='imovel-list-create'),
     path('properties/<str:pk>',        ImovelDetailView.as_view(),     name='imovel-detail'),
@@ -35,6 +40,7 @@ urlpatterns = [
 
     # /reports
     path('reports/participation',      ReportParticipationView.as_view(), name='report-participation'),
+    path('reports/collections-by-cycle', ReportCollectionsByCycleView.as_view(), name='report-collections-by-cycle'),
     path('reports/ranking',            ReportRankingView.as_view(),       name='report-ranking'),
     path('reports/impact',             ReportImpactView.as_view(),        name='report-impact'),
 

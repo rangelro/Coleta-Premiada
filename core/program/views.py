@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -23,20 +23,36 @@ from accounts.models import Usuario
 from accounts.scoping import escopar_por_cidade, usuario_pode_ver_cidade
 
 from .models import (
-    Programa, RegraPrograma,
-    Imovel, SaldoPontos, Consolidacao,
-    ConstantePontuacao,
+    Imovel, Programa, RegraPrograma, SaldoPontos,
+    Consolidacao, ConstantePontuacao, Ciclo
 )
 from .serializers import (
     ProgramaSerializer, RegraProgramaSerializer,
     ImovelSerializer, SaldoPontosSerializer, ConsolidacaoSerializer,
-    ConstantePontuacaoSerializer,
+    ConstantePontuacaoSerializer, CicloSerializer
 )
 from .business_rules import aplicar_teto, DESCONTO_MAXIMO
 
 from config.pagination import StandardResultsSetPagination
 from rest_framework.exceptions import ValidationError
 
+
+class CicloViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para gerenciar os ciclos de um programa.
+    """
+    serializer_class = CicloSerializer
+    permission_classes = [IsGestorOrSupervisor]
+
+    def get_queryset(self):
+        qs = Ciclo.objects.all().order_by('-data_inicio')
+        programa_id = self.request.query_params.get('programa_id')
+        if programa_id:
+            qs = qs.filter(programa_id=programa_id)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
 
 # ---------------------------------------------------------------------------
 # IMÓVEIS  /properties/*
@@ -215,41 +231,49 @@ class ProgramaRulesView(APIView):
 # ---------------------------------------------------------------------------
 class ConsolidacaoRunView(APIView):
     """
-    POST /consolidations/run — dispara consolidação do programa.
-
-    Regras de negócio aplicadas:
-    - Apenas gestor pode executar.
-    - Soma a pontuação por imóvel no ciclo informado.
-    - Converte pontos em desconto via `RegraPrograma.pontos_por_real`.
-    - Aplica o teto `DESCONTO_MAXIMO` (40%) chamando `aplicar_teto`.
+    POST /program/consolidations/run
+    Inicia o cálculo de benefícios para um ciclo aberto.
+    Payload: { "programa_id": 1, "ciclo_id": 1 }
     """
     permission_classes = [IsGestor]
 
     def post(self, request):
         from collection.models import RegistroColeta
+        from django.db.models import Sum
+        from decimal import Decimal
 
         programa_id = request.data.get('programa_id')
-        ciclo = request.data.get('ciclo')  # ex: '12-2026'
-        if not programa_id or not ciclo:
-            return Response(
-                {'detail': 'programa_id e ciclo são obrigatórios.'},
-                status=400,
-            )
+        ciclo_id = request.data.get('ciclo_id')
+        
+        if not programa_id or not ciclo_id:
+            return Response({'detail': 'programa_id e ciclo_id são obrigatórios.'}, status=400)
+            
         programa = get_object_or_404(Programa, pk=programa_id)
+        ciclo = get_object_or_404(Ciclo, pk=ciclo_id, programa=programa)
+        
+        if ciclo.status == 'fechado':
+            return Response({'detail': 'Este ciclo já está fechado e consolidado.'}, status=400)
+
         regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
 
         consolidacao = Consolidacao.objects.create(
             programa=programa,
+            ciclo=ciclo,
             executada_por=request.user,
             status='processando',
         )
 
         try:
-            agregados = (
-                RegistroColeta.objects
-                .values('imovel')
-                .annotate(total=Sum('pontuacao'))
+            # Pega coletas no intervalo de datas do ciclo que ainda não foram consolidadas
+            coletas_validas = RegistroColeta.objects.filter(
+                programa=programa,
+                data_hora_coleta__date__gte=ciclo.data_inicio,
+                data_hora_coleta__date__lte=ciclo.data_fim,
+                ciclo_consolidado__isnull=True
             )
+
+            agregados = coletas_validas.values('imovel').annotate(total=Sum('pontuacao'))
+            
             total_imoveis = 0
             total_pontos = Decimal('0')
 
@@ -258,20 +282,24 @@ class ConsolidacaoRunView(APIView):
                 pontos = Decimal(linha['total'] or 0)
                 if pontos < regras.minimo_para_beneficio:
                     continue
-                # Converte pontos -> % de desconto.
+                
                 novo_desconto = (pontos / regras.pontos_por_real).quantize(Decimal('0.01'))
 
                 saldo, _ = SaldoPontos.objects.get_or_create(
                     imovel_id=imovel_id, programa=programa, ciclo=ciclo,
                     defaults={'desconto_percentual': Decimal('0')},
                 )
+                
                 aplicavel = aplicar_teto(saldo.desconto_percentual, novo_desconto)
                 saldo.desconto_percentual = (saldo.desconto_percentual + aplicavel).quantize(Decimal('0.01'))
-                # Respeita o teto do PROGRAMA (caso seja diferente do default).
+                
                 teto_programa = programa.desconto_maximo
                 if saldo.desconto_percentual > teto_programa:
                     saldo.desconto_percentual = teto_programa
                 saldo.save()
+
+                # Marca as coletas deste imóvel como consolidadas neste ciclo
+                coletas_validas.filter(imovel_id=imovel_id).update(ciclo_consolidado=ciclo)
 
                 total_imoveis += 1
                 total_pontos += pontos
@@ -280,14 +308,16 @@ class ConsolidacaoRunView(APIView):
             consolidacao.total_pontos = total_pontos
             consolidacao.status = 'concluida'
             consolidacao.save()
+            
+            # Fecha o ciclo
+            ciclo.status = 'fechado'
+            ciclo.save()
+            
         except Exception as e:
             consolidacao.status = 'falhou'
             consolidacao.observacao = str(e)
             consolidacao.save()
-            return Response(
-                {'detail': 'Falha na consolidação.', 'erro': str(e)},
-                status=500,
-            )
+            return Response({'detail': 'Falha na consolidação.', 'erro': str(e)}, status=500)
 
         return Response(ConsolidacaoSerializer(consolidacao).data, status=201)
 
@@ -417,6 +447,46 @@ class ReportParticipationView(APIView):
         return Response(list(participantes))
 
 
+class ReportCollectionsByCycleView(APIView):
+    """ GET /reports/collections-by-cycle — total de coletas e pontos por ciclo. """
+    permission_classes = [IsGestorOrSupervisor]
+
+    def get(self, request):
+        from collection.models import RegistroColeta
+        from program.models import Ciclo
+        from django.db.models import Count, Sum
+
+        qs = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+        
+        programa_id = request.query_params.get('programa_id')
+        if not programa_id:
+            return Response([])
+            
+        try:
+            programa_id = int(programa_id)
+        except ValueError:
+            return Response([])
+
+        qs = qs.filter(programa_id=programa_id)
+        ciclos = Ciclo.objects.filter(programa_id=programa_id).order_by('data_inicio')
+
+        resultado = []
+        for ciclo in ciclos:
+            stats = qs.filter(
+                data_hora_coleta__date__gte=ciclo.data_inicio,
+                data_hora_coleta__date__lte=ciclo.data_fim
+            ).aggregate(
+                total_coletas=Count('id'),
+                total_pontos=Sum('pontuacao')
+            )
+            
+            resultado.append({
+                "ciclo_nome": ciclo.nome,
+                "total_coletas": stats['total_coletas'] or 0,
+                "total_pontos": stats['total_pontos'] or 0
+            })
+
+        return Response(resultado)
 
 class ReportRankingView(APIView):
     """ GET /reports/ranking — ranking de imóveis por pontuação."""
@@ -453,8 +523,8 @@ class ReportImpactView(APIView):
     def get(self, request):
         from collection.models import RegistroColeta
 
-        coletas = RegistroColeta.objects.all()
-        saldos = SaldoPontos.objects.all()
+        coletas = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+        saldos = escopar_por_cidade(SaldoPontos.objects.all(), request.user, 'imovel__cidade')
 
         programa_id = request.query_params.get('programa_id')
 

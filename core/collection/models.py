@@ -22,6 +22,12 @@ class RegistroColeta(models.Model):
     )
     data_hora_coleta = models.DateTimeField(null=True, blank=True)
     peso_kg = models.DecimalField(max_digits=8, decimal_places=3, default=0)
+    ciclo_consolidado = models.ForeignKey(
+        'program.Ciclo', on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='coletas_consolidadas',
+        help_text='Ciclo no qual esta coleta foi convertida em benefícios'
+    )
 
     class Meta:
         ordering = ['-id_microservico']

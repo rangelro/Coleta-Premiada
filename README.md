@@ -1,260 +1,83 @@
-# Coleta Premiada
+# Coleta Premiada - Core (Monolito)
 
-Sistema de gestão para programa de incentivo à reciclagem, onde cidadãos ganham pontos por materiais reciclados que podem ser convertidos em benefícios e descontos.
+## 📌 Propósito e Papel na Arquitetura
+O **Core** é o coração do sistema Coleta Premiada. Desenvolvido como um monolito robusto, ele centraliza a gestão de usuários (Moradores, Leitores, Gestores, Supervisores), regras de negócio (programas de incentivo, cálculo de pontos e descontos de IPTU), e trilhas de auditoria para ações sensíveis.
+Na arquitetura geral, o Core orquestra a comunicação entre o banco de dados principal, gerencia as requisições do Frontend e Mobile, e processa eventos assíncronos recebidos do microserviço de coletas (via RabbitMQ) para consolidar a pontuação de forma segura.
 
-## 📋 Visão Geral
+## 🏗️ Arquitetura de Serviços
 
-O Coleta Premiada é uma plataforma integrada que gerencia o ciclo completo da reciclagem incentivada:
-- **Gestão de Usuários e Roles**: Controle de acesso granular para moradores, supervisores e gestores.
-- **Registro de Coletas**: Lógica para registrar pesagens e materiais recolhidos.
-- **Cálculo de Pontuação**: Business rules para conversão de materiais em pontos.
-- **Auditoria**: Sistema de logs detalhados para todas as ações críticas.
+![Diagrama de Arquitetura](./docs/diagrams/diagrama-arquiterura.png)
 
-## 🛠️ Tecnologias Utilizadas
-
-- **Backend**: Python 3.12 com Django e Django REST Framework
-- **Banco de Dados**: PostgreSQL 16 (Relacional e Auditoria)
-- **Mensageria**: RabbitMQ (Fila de processamento assíncrono)
-- **Task Queue**: Celery
-- **Armazenamento de Objetos**: MinIO (Fotos e evidências)
-- **Orquestração**: Docker Compose
-- **Auditoria**: Auditoria Customizada (custom_audit)
-
-## 📁 Estrutura do Projeto
-
-```
-.
-├── core/                    # Monolito Django (Aplicação Principal)
-│   ├── accounts/            # Gestão de usuários, perfis e roles
-│   ├── collection/          # Registro de coletas e pesagens
-│   ├── program/             # Regras de negócio, pontos e benefícios
-│   ├── messaging/           # Integração com RabbitMQ
-│   └── config/              # Configurações do projeto Django
-├── docs/                    # Documentação, ADRs e Diagramas
-├── docker-compose.yml       # Orquestração de containers
-├── Makefile                 # Atalhos para comandos comuns
-└── .env                     # Variáveis de ambiente (não versionado)
+### Diagrama Simplificado (ASCII)
+```text
++-------------------+                    +-----------------------+
+|  APP DO COLETOR   |                    |        CORE           |
+|  (React Native)   |                    |    (React Portal)     |
+|   [ SQLite ]      |                    +-----------+-----------+
++--------+----------+                                |
+         | Sinc. Dados                               | Consultas
+         v                                           v
++--------+----------+                    +-----------+-----------+
+|   MS DE COLETA    |      Eventos       |     Core Backend      | ----> [ IPTU ]
+|   (Django API)    | -----------------> |    (Django API)       |
+|   [ MongoDB ]     |  (Fila Mensagens)  +-----------+-----------+ ----> [ IA Analytics ]
++--------+----------+                                |
+         | Upload                            +-------+-------+
+         v                                   |  PostgreSQL   | 
+    [ S3 / MinIO ] <------------------------ +---------------+
+                           Recuperar Foto
 ```
 
-## 🚀 Como Iniciar o Projeto
+## 🛠️ Stack Tecnológica
+- **Backend:** Python 3.12, Django 5.x, Django REST Framework
+- **Banco de Dados:** PostgreSQL 16
+- **Mensageria & Filas:** RabbitMQ, Celery
+- **Armazenamento (Object Storage):** MinIO
+- **Infraestrutura/Orquestração:** Docker, Docker Compose
 
-### Pré-requisitos
+## 📋 Pré-requisitos
+- [Docker](https://docs.docker.com/engine/install/) e [Docker Compose](https://docs.docker.com/compose/install/) instalados
+- [Git](https://git-scm.com/)
 
-- Docker e Docker Compose instalados.
+## 🚀 Instalação e Execução Local com Docker
 
-### Passo a Passo
-
-1. **Clone o repositório**
+1. **Clone este repositório:**
    ```bash
    git clone https://github.com/rangelro/Coleta-Premiada.git
    cd Coleta-Premiada
    ```
 
-2. **Configure as variáveis de ambiente**
-   O projeto utiliza um arquivo `.env` na raiz. Certifique-se de que ele contém as chaves necessárias (baseie-se no `core/config/settings.py` para as variáveis esperadas).
+2. **Configure as Variáveis de Ambiente:**
+   Copie o arquivo de exemplo e edite se necessário:
+   ```bash
+   cp .env.example .env
+   ```
 
-3. **Inicie os containers**
+3. **Suba os containers:**
    ```bash
    docker compose up -d
    ```
 
-4. **Verifique se todos os serviços estão rodando**
+4. **Execute as migrações do banco de dados (se não ocorrer automaticamente):**
    ```bash
-   docker ps
+   docker compose exec web python manage.py migrate
    ```
 
-### Portas e Acessos
+O painel de API e Admin estarão disponíveis em `http://localhost:8001`.
 
-- **API Core**: http://localhost:8001 (Mapeada da porta 8001 interna)
-- **Banco de Dados (PostgreSQL)**: localhost:5433 (Exposta para ferramentas externas)
-- **Painel do RabbitMQ**: http://localhost:15672
-- **Painel do MinIO**: http://localhost:9001
+## ⚙️ Variáveis de Ambiente
+O projeto exige a definição de variáveis no arquivo `.env`. Um modelo completo com as chaves necessárias está disponível no arquivo `.env.example` na raiz do projeto (inclui credenciais de DB, chaves JWT, e configurações do MinIO/RabbitMQ).
 
-## Monitoramento (Prometheus + Grafana)
+## 🧪 Como rodar os testes
+Para executar a suíte de testes unitários e de integração dentro do container:
 
-A stack de monitoramento é opcional e roda em um compose separado. Requer que a stack principal (`make up`) já esteja no ar, pois o `postgres_exporter` acessa o PostgreSQL via rede `coleta-shared`.
-
-### Como subir
-
+#TODO
 ```bash
-make monitoring-up
+docker compose exec web pytest
+# ou utilizando o test runner do Django:
+docker compose exec web python manage.py test
 ```
 
-### Serviços e portas
-
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| Grafana | http://localhost:3000 | Dashboards de visualização |
-| Prometheus | http://localhost:9090 | Coleta e consulta de métricas |
-| postgres_exporter | http://localhost:9187/metrics | Métricas do PostgreSQL |
-| node_exporter | http://localhost:9100/metrics | Métricas do host (Docker VM) |
-
-### Credenciais padrão
-
-| Serviço | Usuário | Senha |
-|---------|---------|-------|
-| Grafana | `admin` | `senha_admin_grafana` |
-
-### Configurar datasource Prometheus no Grafana
-
-1. Acesse http://localhost:3000 e faça login
-2. Vá em **Connections → Data sources → Add data source**
-3. Selecione **Prometheus**
-4. Em **URL**, informe `http://prometheus:9090`
-5. Clique em **Save & test**
-
-### Outros comandos
-
-```bash
-make monitoring-logs   # Ver logs da stack de monitoramento
-make monitoring-down   # Derrubar a stack de monitoramento
-```
-
-## 💾 Backup e Restore do Banco de Dados
-
-O serviço `db-backup` (ver `./db-backup`) executa `pg_dump` diariamente via cron e mantém uma política de retenção do tipo "diário + semanal":
-
-- **Backups diários**: um por dia, mantidos os `BACKUP_KEEP_DAILY` (padrão 7) mais recentes em `/backups/postgres/daily` (volume `postgres_backups`).
-- **Backups semanais**: no dia da semana definido por `BACKUP_WEEKLY_DAY` (padrão 7 = domingo), o backup do dia também é copiado para `/backups/postgres/weekly`, mantendo os `BACKUP_KEEP_WEEKLY` (padrão 4) mais recentes.
-- **Agendamento**: configurável via `BACKUP_CRON_SCHEDULE` (padrão `0 2 * * *`, todo dia às 2h).
-
-### Gerar um backup manualmente
-
-```bash
-docker compose exec db-backup /scripts/backup.sh
-```
-
-### Restaurar um backup
-
-```bash
-# Lista os backups disponíveis no volume
-docker compose exec db-backup /scripts/restore.sh
-
-# Restaura um arquivo específico (pede confirmação antes de sobrescrever o banco)
-docker compose exec db-backup /scripts/restore.sh /backups/postgres/daily/coleta_premiada_2026-06-18_02-00-00.dump
-```
-
-`pg_restore --clean --if-exists` é usado internamente, ou seja, a restauração **substitui os dados atuais** do banco de destino.
-
-### Variáveis de ambiente
-
-Ver `BACKUP_CRON_SCHEDULE`, `BACKUP_KEEP_DAILY`, `BACKUP_KEEP_WEEKLY` e `BACKUP_WEEKLY_DAY` no `.env.example`.
-
-### ⚠️ Migrando do serviço antigo (`backup-core`)
-
-O serviço `db-backup` substitui o antigo `backup-core` e reaproveita o mesmo volume nomeado (`backup-data`), mas muda:
-
-- **Ponto de montagem**: de `/backups` para `/backups/postgres`.
-- **Formato**: de `.sql.gz` (dump texto + gzip) para `.dump` (formato custom do `pg_dump`, restaurado com `pg_restore`).
-
-Se este volume já tinha backups gerados pelo `backup-core` em produção, esses arquivos `core_*.sql.gz` continuam existindo no volume e passam a aparecer soltos em `/backups/postgres/` (fora de `daily/`/`weekly/`). Eles **não** são enxergados pelo `restore.sh` (que só lista `*.dump`) nem pela política de retenção nova. Antes de subir esta versão em um ambiente com backups antigos:
-
-```bash
-# Inspeciona o que existe no volume antes de migrar
-docker run --rm -v backup-data:/data alpine ls -la /data
-
-# Remove os backups antigos (.sql.gz) depois de confirmar que não são mais necessários
-docker run --rm -v backup-data:/data alpine sh -c "rm -f /data/core_*.sql.gz"
-```
-
-## 📖 Documentação Adicional
-
-- [Diagramas de Arquitetura](./docs/diagrams/)
-- [ADRs](./docs/adr/)
-
-## ⚙️ Variáveis de Ambiente Principais
-
-```env
-POSTGRES_DB=coleta_premiada
-POSTGRES_USER=coleta_user
-POSTGRES_PASSWORD=coleta_senha_local
-POSTGRES_PORT=5432 # Interna do container
-
-RABBITMQ_DEFAULT_USER=guest
-RABBITMQ_DEFAULT_PASS=guest
-
-DJANGO_SECRET_KEY=chave-secreta-de-desenvolvimento
-DEBUG=True
-```
-
-## 🐧 Comandos de Desenvolvimento
-
-Use o `Makefile` ou os comandos Docker diretamente:
-
-```bash
-# Executar migrações
-docker compose exec core python manage.py migrate
-
-# Criar superusuário
-docker compose exec core python manage.py createsuperuser
-
-# Ver logs do sistema
-docker compose logs -f core
-```
-
-## Manutencao automatizada dos bancos
-
-Os scripts ficam em `scripts/maintenance/` e sao executados por servicos do
-`docker-compose.yml`.
-
-### PostgreSQL
-
-Servico: `postgres-maintenance`
-
-Periodicidade recomendada:
-
-- `cleanup_logs.sh`: diariamente as 02:15, remove registros de `audit_log`
-  mais antigos que `LOG_RETENTION_DAYS` dias.
-- `vacuum_analyze.sh`: diariamente as 02:45, executa `VACUUM ANALYZE` nas
-  principais tabelas do core.
-- `reindex.sh`: semanalmente aos domingos as 03:30, executa `REINDEX TABLE
-  CONCURRENTLY` nas tabelas com maior volume de escrita.
-
-Execucao manual:
-
-```bash
-docker compose run --rm postgres-maintenance sh /maintenance/cleanup_logs.sh
-docker compose run --rm postgres-maintenance sh /maintenance/vacuum_analyze.sh
-docker compose run --rm postgres-maintenance sh /maintenance/reindex.sh
-```
-
-Smoke test automatico:
-
-```bash
-make maintenance-smoke
-```
-
-O smoke test exige que as tabelas do core ja existam no PostgreSQL, incluindo
-`audit_log` do app `custom_audit`.
-
-### MongoDB
-
-Servico: `mongo-maintenance`
-
-Este repositorio nao define o MongoDB do microservico de coleta. O script
-`cleanup_mongo_logs.sh` assume que o Mongo esta acessivel como `ms-db` pela
-rede `coleta-shared` e usa as variaveis `MONGO_*` do `.env`.
-
-Periodicidade recomendada:
-
-- `cleanup_mongo_logs.sh`: diariamente, complementar ao TTL index, remove
-  documentos antigos da colecao de logs.
-
-Defaults configuraveis:
-
-- `LOG_RETENTION_DAYS=90`
-- `MONGO_LOG_COLLECTION=audit_logs`
-- `MONGO_LOG_DATE_FIELD=created_at`
-- `MONGO_AUTH_DB=admin`
-
-Execucao manual:
-
-```bash
-docker compose run --rm mongo-maintenance sh /maintenance/cleanup_mongo_logs.sh
-```
-
-Para incluir MongoDB no smoke test:
-
-```bash
-RUN_MONGO_MAINTENANCE_TEST=1 make maintenance-smoke
-```
+## 📚 Documentação Adicional
+Consulte nossa Wiki para diagramas C4, ADRs (Architecture Decision Records) e processos detalhados:
+👉 [Wiki do Projeto Coleta Premiada](https://github.com/rangelro/Coleta-Premiada/wiki)

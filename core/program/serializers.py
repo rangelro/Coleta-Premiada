@@ -2,8 +2,15 @@ from rest_framework import serializers
 from .models import (
     Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
-    ConstantePontuacao,
+    ConstantePontuacao, Ciclo,
 )
+
+
+class CicloSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ciclo
+        fields = ['id', 'programa', 'nome', 'tipo', 'data_inicio', 'data_fim', 'status', 'criado_em']
+        read_only_fields = ['id', 'criado_em']
 
 
 class ImovelSerializer(serializers.ModelSerializer):
@@ -72,11 +79,15 @@ class SaldoPontosSerializer(serializers.ModelSerializer):
 
 
 class ConsolidacaoSerializer(serializers.ModelSerializer):
+    programa_nome = serializers.CharField(source='programa.nome', read_only=True)
+    executada_por_nome = serializers.CharField(source='executada_por.nome', read_only=True)
+    ciclo_nome = serializers.CharField(source='ciclo.nome', read_only=True)
+
     class Meta:
         model = Consolidacao
         fields = [
-            'id', 'programa', 'executada_em', 'executada_por',
-            'status', 'total_imoveis', 'total_pontos', 'observacao',
+            'id', 'programa', 'programa_nome', 'ciclo', 'ciclo_nome', 'executada_em', 'executada_por',
+            'executada_por_nome', 'status', 'total_imoveis', 'total_pontos', 'observacao',
         ]
         read_only_fields = [
             'id', 'executada_em', 'executada_por', 'status',

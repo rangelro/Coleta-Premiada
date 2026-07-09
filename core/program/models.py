@@ -73,13 +73,42 @@ class Imovel(models.Model):
         return f"{self.inscricao} — {self.titular.nome}"
 
 
+class Ciclo(models.Model):
+    """Período de apuração do programa de benefícios."""
+    TIPO_CHOICES = [
+        ('mensal', 'Mensal'),
+        ('semestral', 'Semestral'),
+        ('anual', 'Anual'),
+        ('personalizado', 'Personalizado'),
+    ]
+    STATUS_CHOICES = [
+        ('aberto', 'Aberto'),
+        ('fechado', 'Fechado'),
+    ]
+
+    programa = models.ForeignKey(Programa, on_delete=models.CASCADE, related_name='ciclos')
+    nome = models.CharField(max_length=100, help_text='Ex: 1º Semestre 2026, Maio/2026')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='mensal')
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberto')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-data_inicio']
+        unique_together = ('programa', 'nome')
+
+    def __str__(self):
+        return f"{self.nome} ({self.get_status_display()})"
+
+
 class SaldoPontos(models.Model):
-    """Saldo acumulado de desconto no IPTU por imóvel no ciclo (mensal)."""
+    """Saldo acumulado de desconto no IPTU por imóvel no ciclo."""
     imovel = models.ForeignKey(Imovel, on_delete=models.PROTECT, related_name='saldos')
     programa = models.ForeignKey(
         Programa, on_delete=models.PROTECT, related_name='saldos', null=True, blank=True,
     )
-    ciclo = models.CharField(max_length=7, help_text='Mês de apuração (MM-YYYY)')
+    ciclo = models.ForeignKey(Ciclo, on_delete=models.PROTECT, related_name='saldos')
     desconto_percentual = models.DecimalField(
         max_digits=5, decimal_places=2, default=0,
         help_text='Desconto acumulado no IPTU (%)',
@@ -90,7 +119,7 @@ class SaldoPontos(models.Model):
         unique_together = ('imovel', 'programa', 'ciclo')
 
     def __str__(self):
-        return f"{self.imovel.inscricao} | {self.ciclo} | {self.desconto_percentual}%"
+        return f"{self.imovel.inscricao} | {self.ciclo.nome} | {self.desconto_percentual}%"
 
 
 class Consolidacao(models.Model):
@@ -112,6 +141,7 @@ class Consolidacao(models.Model):
         related_name='consolidacoes_executadas',
     )
     status = models.CharField(max_length=20, choices=STATUS, default='pendente')
+    ciclo = models.ForeignKey(Ciclo, on_delete=models.PROTECT, related_name='consolidacoes', null=True)
     total_imoveis = models.PositiveIntegerField(default=0)
     total_pontos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     observacao = models.TextField(blank=True)
