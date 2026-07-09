@@ -1,0 +1,64 @@
+@startuml containers
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Coleta Premiada - C4 Nivel 2 - Containers
+
+LAYOUT_WITH_LEGEND()
+
+Person(gestor, "Gestor", "Administra o programa.")
+Person(supervisor, "Supervisor", "Acompanha operacao e regras.")
+Person(coletor, "Coletor", "Registra coletas em campo.")
+
+System_Boundary(cp, "Coleta Premiada") {
+    Container(app, "App / Frontend", "Next.js 16, React 19", "Repositorio coleta-premiada-frontend. Consome Core API; ha helper para Collection MS.")
+    Container(core, "Core API", "Django 6, DRF, SimpleJWT", "Monolito principal: usuarios, programas, imoveis, coletas processadas, beneficios, auditoria e relatorios.")
+    Container(core_worker, "Core Celery Worker/Beat", "Celery 5 + RabbitMQ", "Executa tarefas assincronas, incluindo geocodificacao de imoveis.")
+    Container(core_consumer, "Core Consumer", "Django management command", "consume_queue: consome fila coletas e persiste RegistroColeta.")
+    ContainerDb(core_db, "Core PostgreSQL", "PostgreSQL 16", "Dados relacionais do Core e auditoria.")
+
+    Container(ms, "MS de Coleta", "Django 6, DRF, django_mongodb_backend", "API operacional para coletores: imoveis, coletas, historico, pendencias e sincronizacao.")
+    Container(ms_consumer, "MS Consumer", "Django management command", "consumir_imoveis: consome fila imoveis e atualiza cache operacional.")
+    ContainerDb(ms_db, "MS MongoDB", "MongoDB 7", "Imoveis, coletores e coletas operacionais do MS.")
+
+    ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis e coletas; broker Celery do Core.")
+    ContainerDb(minio, "MinIO", "S3 compativel", "Fotos/evidencias de coletas.")
+
+    Container(prometheus, "Prometheus", "Prometheus", "Coleta metricas de Django, RabbitMQ, PostgreSQL, MongoDB e infraestrutura.")
+    Container(grafana, "Grafana", "Grafana", "Dashboards provisionados para Core, MS e Frontend.")
+}
+
+System_Ext(nominatim, "Nominatim", "Geocodificacao externa.")
+System_Ext(llm, "LLM", "DeepSeek API ou LM Studio local, conforme configuracao.")
+
+Rel(gestor, app, "Usa dashboard web", "HTTPS")
+Rel(supervisor, app, "Usa dashboard web", "HTTPS")
+Rel(coletor, ms, "Usa endpoints de campo", "HTTPS/JSON")
+
+Rel(app, core, "Autenticacao, programas, imoveis, coletas processadas, beneficios, relatorios", "HTTP/JSON + Bearer JWT")
+Rel(app, ms, "Helper COLLECTION_API_URL existe; uso direto nao esta claro no frontend atual", "HTTP/JSON")
+Rel(core, core_db, "Le/escreve", "PostgreSQL")
+Rel(core, rabbitmq, "Publica eventos de imoveis", "AMQP fila imoveis")
+Rel(core_consumer, rabbitmq, "Consome eventos de coletas", "AMQP fila coletas")
+Rel(core_consumer, core_db, "Cria RegistroColeta e atualiza SaldoPontos", "PostgreSQL")
+Rel(core_worker, rabbitmq, "Consome tarefas Celery", "AMQP")
+Rel(core_worker, nominatim, "Geocodifica enderecos", "HTTPS")
+Rel(core_worker, core_db, "Atualiza latitude/longitude", "PostgreSQL")
+Rel(core, llm, "Gera relatorios narrativos", "HTTPS/OpenAI-compatible")
+
+Rel(ms, ms_db, "Le/escreve", "MongoDB")
+Rel(ms, minio, "Envia fotos de coleta", "S3 API")
+Rel(ms, rabbitmq, "Publica coletas confirmadas", "AMQP fila coletas")
+Rel(ms_consumer, rabbitmq, "Consome imoveis do Core", "AMQP fila imoveis")
+Rel(ms_consumer, ms_db, "Upsert de Imovel operacional", "MongoDB")
+
+Rel(prometheus, core, "Scrape /metrics", "HTTP")
+Rel(prometheus, ms, "Scrape /metrics", "HTTP")
+Rel(prometheus, rabbitmq, "Scrape metricas RabbitMQ", "HTTP")
+Rel(prometheus, core_db, "Via postgres-exporter", "HTTP")
+Rel(prometheus, ms_db, "Via mongodb-exporter", "HTTP")
+Rel(grafana, prometheus, "Consulta metricas", "HTTP")
+
+' TODO: O requisito nomeia "App: React Native", mas o repositorio disponivel e Next.js.
+' TODO: O compose principal do Core nao inclui o MS; o MS possui compose standalone e se conecta a rede externa de observabilidade.
+
+@enduml

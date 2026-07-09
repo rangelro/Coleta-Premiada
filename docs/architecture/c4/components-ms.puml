@@ -1,0 +1,58 @@
+@startuml components-ms
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Coleta Premiada - C4 Nivel 3 - Componentes do MS de Coleta
+
+LAYOUT_WITH_LEGEND()
+
+Person(coletor, "Coletor", "Agente de campo.")
+
+Container_Boundary(ms, "MS de Coleta - Django/DRF") {
+    Component(config_urls, "config.urls", "Django URLConf", "Roteia /api/auth, /api/me, /api/imoveis, /api/coletas e /api/sincronizacao.")
+    Component(coletores_views, "coletores.views", "DRF APIViews", "RegisterView, LoginView, LogoutView e MeView.")
+    Component(coletores_models, "coletores.models.Coletor", "Django model", "Usuario do MS com matricula, zona, cargo e foto_perfil.")
+
+    Component(coleta_views, "coleta.views", "DRF APIViews", "Busca imoveis, registra coletas, historico, pendencias e sincronizacao offline.")
+    Component(coleta_models, "coleta.models", "Django models", "Imovel e Coleta persistidos no MongoDB.")
+    Component(coleta_managers, "coleta.managers", "Managers", "Consultas e upsert de imoveis vindos do Core.")
+    Component(storage_service, "coleta.services.storage.upload_foto_coleta", "Servico MinIO", "Envia foto de coleta e retorna URL.")
+    Component(fila_service, "coleta.services.fila.publicar_coleta", "Publisher RabbitMQ", "Publica coletas confirmadas na fila coletas.")
+    Component(reenviar_coletas_cmd, "coleta.management.commands.reenviar_coletas", "Management command", "Reenvia coletas pendentes para RabbitMQ.")
+}
+
+Container(ms_consumer, "MS Consumer", "Django management command", "consumir_imoveis: consome fila imoveis e atualiza cache operacional.")
+ContainerDb(ms_db, "MS MongoDB", "MongoDB 7", "Banco operacional do MS.")
+ContainerDb(minio, "MinIO", "S3 compativel", "Bucket de fotos/evidencias.")
+ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis e coletas.")
+Container(core, "Core API", "Django/DRF", "Origem de imoveis e destino final de coletas processadas.")
+
+Rel(coletor, coletores_views, "Autentica", "HTTP/JSON")
+Rel(coletor, coleta_views, "Busca imoveis, registra e sincroniza coletas", "HTTP/JSON")
+
+Rel(config_urls, coletores_views, "Roteia /api/auth e /api/me")
+Rel(config_urls, coleta_views, "Roteia /api/imoveis, /api/coletas e /api/sincronizacao")
+
+Rel(coletores_views, coletores_models, "Cria/autentica coletor")
+Rel(coletores_models, ms_db, "Persistencia")
+
+Rel(coleta_views, coleta_models, "CRUD e consultas")
+Rel(coleta_views, storage_service, "Upload de foto")
+Rel(coleta_views, fila_service, "Publica coleta confirmada")
+Rel(coleta_models, ms_db, "Persistencia")
+Rel(coleta_managers, coleta_models, "Upsert/consultas")
+Rel(storage_service, minio, "S3 API")
+Rel(fila_service, rabbitmq, "Publica fila coletas")
+Rel(reenviar_coletas_cmd, coleta_models, "Busca pendentes")
+Rel(reenviar_coletas_cmd, fila_service, "Republica coletas")
+
+Rel(ms_consumer, rabbitmq, "Consome fila imoveis", "AMQP")
+' Nota: ms_consumer roda como processo separado (management command), mas reutiliza
+' os mesmos managers do codebase do MS de Coleta (mesmo repositorio).
+Rel(ms_consumer, coleta_managers, "Faz upsert de imoveis")
+
+Rel(core, rabbitmq, "Publica imoveis e consome coletas", "AMQP")
+
+' TODO: O comando reenviar_coletas chama publicar_coleta com parametro pontuacao, mas a assinatura atual nao recebe esse argumento.
+' TODO: O cliente React Native/mobile citado no requisito nao foi encontrado entre os repositorios analisados.
+
+@enduml

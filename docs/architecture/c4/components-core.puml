@@ -1,0 +1,77 @@
+@startuml components-core
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Coleta Premiada - C4 Nivel 3 - Componentes do Core
+
+LAYOUT_WITH_LEGEND()
+
+Container_Boundary(core, "Core API - Django/DRF") {
+    Component(config_urls, "config.urls", "Django URLConf", "Roteia /api/accounts, /api/program, /api/collection, /api/audit, /api/reports e /metrics.")
+    Component(accounts_views, "accounts.views", "DRF APIViews/generics", "Auth, /me, usuarios, roles e cidades.")
+    Component(accounts_models, "accounts.models", "Django models", "Usuario, Role e Cidade.")
+    Component(accounts_permissions, "accounts.permissions / scoping", "Permissoes e escopo", "Perfis gestor, supervisor, morador, gerente_geral e escopo por cidade.")
+
+    Component(program_views, "program.views", "DRF APIViews/generics", "Programas, regras, imoveis, consolidacoes, beneficios, relatorios agregados e constante de pontuacao.")
+    Component(program_models, "program.models", "Django models", "Programa, RegraPrograma, Imovel, SaldoPontos, Consolidacao, ConstantePontuacao.")
+    Component(program_rules, "program.business_rules.aplicar_teto", "Regra de negocio", "Aplica teto de desconto do IPTU.")
+    Component(program_signals, "program.signals.publicar_imovel", "Django signal", "post_save de Imovel: publica evento e agenda geocodificacao.")
+    Component(program_tasks, "program.tasks.geocodificar_imovel", "Celery task", "Consulta Nominatim, atualiza coordenadas e republica imovel.")
+
+    Component(collection_views, "collection.views", "DRF APIViews/generics", "Coletas processadas, evidencias e contestacoes.")
+    Component(collection_models, "collection.models", "Django models", "RegistroColeta, Evidencia e Contestacao.")
+
+    Component(reports_views, "reports.views", "DRF APIViews", "Gera e consulta historico de relatorios narrativos.")
+    Component(reports_service, "reports.llm_service.LLMReportService", "Servico de LLM", "Extrai agregacoes e chama DeepSeek via OpenAI-compatible API.")
+    Component(local_reports_service, "reports.local_llm_service", "Servico de LLM local", "Alternativa local via LM Studio/OpenAI-compatible.")
+
+    Component(messaging, "messaging.connection / producer", "Integracao RabbitMQ", "Abre conexoes pika e publica eventos na fila imoveis.")
+    Component(audit, "custom_audit", "Middleware, signals, models e API", "Registra operacoes criticas e expoe logs/exportacao.")
+}
+
+Container(core_consumer, "Core Consumer", "Django management command", "consume_queue: consome fila coletas e persiste RegistroColeta.")
+ContainerDb(core_db, "Core PostgreSQL", "PostgreSQL 16", "Banco do Core.")
+ContainerQueue(rabbitmq, "RabbitMQ", "AMQP", "Filas imoveis/coletas e broker Celery.")
+System_Ext(nominatim, "Nominatim", "Geocodificacao.")
+System_Ext(llm, "LLM", "DeepSeek ou LM Studio local.")
+
+Rel(config_urls, accounts_views, "Roteia requests")
+Rel(config_urls, program_views, "Roteia requests")
+Rel(config_urls, collection_views, "Roteia requests")
+Rel(config_urls, reports_views, "Roteia requests")
+Rel(config_urls, audit, "Roteia requests")
+
+Rel(accounts_views, accounts_models, "CRUD/autenticacao")
+Rel(accounts_views, accounts_permissions, "Autoriza e escopa")
+Rel(accounts_models, core_db, "Persistencia")
+
+Rel(program_views, program_models, "CRUD e consultas")
+Rel(program_views, program_rules, "Calcula desconto")
+Rel(program_views, accounts_permissions, "Autoriza e escopa")
+Rel(program_models, core_db, "Persistencia")
+Rel(program_signals, messaging, "Publica Imovel")
+Rel(program_signals, program_tasks, "Agenda geocodificacao")
+Rel(program_tasks, nominatim, "Geocode")
+Rel(program_tasks, program_models, "Atualiza coordenadas")
+Rel(program_tasks, messaging, "Republica Imovel geocodificado")
+
+Rel(collection_views, collection_models, "CRUD")
+Rel(collection_models, core_db, "Persistencia")
+Rel(core_consumer, rabbitmq, "Consome fila coletas", "AMQP")
+' Nota: core_consumer roda como processo separado (management command), mas reutiliza
+' os mesmos models/regras de negocio do codebase do Core API (mesmo repositorio).
+Rel(core_consumer, collection_models, "Cria RegistroColeta")
+Rel(core_consumer, program_models, "Atualiza SaldoPontos")
+Rel(core_consumer, program_rules, "Aplica teto")
+
+Rel(reports_views, reports_service, "Gera relatorio")
+Rel(reports_service, collection_models, "Consulta agregacoes")
+Rel(reports_service, program_models, "Consulta saldos/imoveis")
+Rel(reports_service, llm, "Chat completions")
+Rel(local_reports_service, llm, "OpenAI-compatible local")
+
+Rel(messaging, rabbitmq, "Publica/abre conexoes")
+Rel(audit, core_db, "Persiste logs")
+
+' TODO: custom_audit nao foi detalhado classe a classe neste diagrama; expandir se a documentacao de auditoria exigir esse nivel.
+
+@enduml
