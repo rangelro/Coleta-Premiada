@@ -22,6 +22,62 @@ Um `gestor` **não pode** criar/promover ninguém para `gerente_geral` via
 `supervisor` tem a cidade do novo usuário **forçada** para a própria cidade
 do gestor (o valor de `cidade` enviado no corpo é ignorado nesse caso).
 
+## Impacto em `gestor` e `supervisor` (antes → depois)
+
+Os itens abaixo já aparecem espalhados pelas seções seguintes; aqui eles
+estão agrupados para deixar claro o que mudou de fato **para quem já era
+`gestor`/`supervisor`** — não apenas o que `gerente_geral` ganhou de novo.
+
+**Antes desta feature:**
+- `Usuario` não tinha campo `cidade`; `perfil` não tinha nenhum recorte
+  geográfico associado.
+- `POST /api/accounts/auth` (cadastro público, `AllowAny`) usava o mesmo
+  serializer da criação administrativa e **expunha o campo `perfil`** sem
+  nenhuma validação — ou seja, dava para se autocadastrar publicamente como
+  `gestor` ou `supervisor`, sem autenticação e sem passar por cidade nenhuma.
+- `IsGestorOrSupervisor` era uma permissão isolada, só com
+  `perfil in ('gestor', 'supervisor')`, sem ligação com `IsGestor`/`IsSupervisor`.
+- Todas as listagens/relatórios operacionais (`properties`, `benefits`,
+  `collections`, `disputes`, `reports/*`) eram **globais** para gestor e
+  supervisor: um gestor via os imóveis, coletas, contestações e benefícios
+  de **todas** as cidades, não só da própria.
+
+**Depois desta feature:**
+1. **Campo `cidade` passou a ser obrigatório** para `gestor` e `supervisor`
+   (`Usuario.PERFIS_COM_CIDADE_OBRIGATORIA`), validado em
+   `POST/PATCH /api/accounts/users` (ver 400 possíveis na seção abaixo).
+2. **Cadastro público deixou de criar gestor/supervisor.**
+   `POST /api/accounts/auth` passou a usar `UsuarioSelfRegisterSerializer`,
+   que nem expõe `perfil`/`cidade` — sempre sai `morador`. A única forma de
+   promover alguém a `gestor`/`supervisor` agora é via
+   `POST/PATCH /api/accounts/users`, feito por outro `gestor`/`gerente_geral`
+   já autenticado.
+3. **Hierarquia na criação/promoção de usuários** (`POST/PATCH /users`, já
+   citada acima): um `gestor` não pode promover ninguém a `gerente_geral`, e
+   ao criar/promover outro `gestor`/`supervisor` tem a `cidade` forçada para
+   a própria — regra que não existia antes (não havia cidade para forçar).
+4. **Escopo por cidade nos dados operacionais — a mudança de maior impacto.**
+   Gestor/supervisor deixaram de ver o sistema inteiro e passaram a ver
+   apenas a própria cidade em:
+   - `GET /api/program/properties` (lista) e `GET/PATCH /api/program/properties/:id` (`403` fora da cidade)
+   - `POST /api/program/properties/:id/users`, `DELETE .../users/:userId` (`403` fora da cidade)
+   - `GET /api/program/benefits`
+   - `GET /api/program/reports/participation`, `/reports/ranking`, `/reports/impact`
+   - `GET /api/collection/collections` (lista) e `GET /api/collection/collections/:id` (`403` fora da cidade)
+   - `GET /api/collection/disputes` (lista)
+   - `PATCH /api/collection/disputes/:id` (análise da contestação) — continua exclusiva de `gestor`, mas agora com `403` se a contestação for de outra cidade
+5. **O que continua global** (sem recorte por cidade, mesmo para gestor/supervisor):
+   - `GET /api/accounts/users` — listagem de usuários não é escopada.
+   - `/api/program/programs`, `/programs/:id/rules`, `/consolidations/*`, `/scoring-constant`.
+   - `GET/POST /api/collection/collections/:id/evidences`.
+   - `supervisor` continua sem acesso a `/users`, `/roles` e `/cidades` — isso já era exclusivo de `gestor`/`gerente_geral` antes e não mudou.
+6. **Ponto de atenção operacional:** `cidade` é `null=True` no banco (só é
+   exigida via `clean()`/serializer, não por `NOT NULL`). Um
+   `gestor`/`supervisor` que já existia antes desta mudança e ficou sem
+   `cidade` vinculada passa a ver **listas vazias** em todos os endpoints
+   escopados do item 4 (`escopar_por_cidade` devolve `queryset.none()`, sem
+   erro) — vale conferir/backfillar a cidade desses usuários manualmente.
+
 ---
 
 ## `/api/accounts` — Usuários, Cidades e Roles
@@ -43,8 +99,9 @@ não é mais possível se autocadastrar como gestor/supervisor/gerente_geral.
   esse campo). Para obter o id do usuário criado, faça login e consulte
   `GET /auth/me`, ou, se autenticado como gestor/gerente_geral, use
   `GET /users?search=<email>`.
-- **400** se `perfil` for enviado no corpo — o campo simplesmente é ignorado
-  (não existe no serializer), o registro sempre sai como `morador`.
+- **Observação:** enviar `perfil` no corpo **não causa erro** — o campo
+  simplesmente é ignorado (não existe no `UsuarioSelfRegisterSerializer`), e
+  o registro sempre sai como `morador` com `201 Created` normalmente.
 
 ### `POST /api/accounts/users`
 Cria usuário com qualquer perfil. Usado por gestor/gerente_geral.

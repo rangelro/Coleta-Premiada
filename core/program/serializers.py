@@ -12,9 +12,28 @@ class CicloSerializer(serializers.ModelSerializer):
         fields = ['id', 'programa', 'nome', 'tipo', 'data_inicio', 'data_fim', 'status', 'criado_em']
         read_only_fields = ['id', 'criado_em']
 
+    def validate(self, data):
+        data_inicio = data.get('data_inicio', getattr(self.instance, 'data_inicio', None))
+        data_fim = data.get('data_fim', getattr(self.instance, 'data_fim', None))
+        programa = data.get('programa', getattr(self.instance, 'programa', None))
+
+        if data_inicio and data_fim and data_fim < data_inicio:
+            raise serializers.ValidationError('data_fim deve ser maior ou igual a data_inicio.')
+
+        if programa and data_inicio and data_fim:
+            sobrepostos = Ciclo.objects.filter(
+                programa=programa,
+                data_inicio__lte=data_fim,
+                data_fim__gte=data_inicio,
+            ).exclude(pk=self.instance.pk if self.instance else None)
+            if sobrepostos.exists():
+                raise serializers.ValidationError(
+                    'Já existe um ciclo com datas sobrepostas para este programa.'
+                )
+        return data
+
 
 class ImovelSerializer(serializers.ModelSerializer):
-    #Adicionados campos para a leitura dos dados do titular pelo front
     titular_nome = serializers.CharField(source='titular.nome', read_only=True)
 
     class Meta:

@@ -11,6 +11,7 @@ Cobre:
 """
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, viewsets
@@ -113,25 +114,26 @@ class ImovelDetailView(generics.RetrieveUpdateAPIView):
     PATCH /properties/:id — atualiza um imóvel (gestor/supervisor).
     """
     serializer_class = ImovelSerializer
-    queryset = Imovel.objects.all()
 
     def get_permissions(self):
         if self.request.method in ('PUT', 'PATCH'):
             return [IsGestorOrSupervisor()]
         return [IsAuthenticated()]
 
+    def get_queryset(self):
+        return escopar_por_cidade(Imovel.objects.all(), self.request.user, 'cidade')
+
     def get_object(self):
-        # Sobrescreve a busca padrão para permitir localizar o imóvel pelo ID primário (inteiro)
-        # ou pela inscrição/IPTU (string), facilitando a integração com o microsserviço.
+        # Suporta busca por ID primário (inteiro) ou inscrição imobiliária (string),
+        # necessário para integração com o microsserviço que usa inscrição como identificador.
         queryset = self.filter_queryset(self.get_queryset())
-        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field or 'pk'
-        val = self.kwargs[lookup_url_kwarg]
+        val = self.kwargs[self.lookup_url_kwarg or self.lookup_field or 'pk']
         try:
-            # Tenta recuperar o imóvel pela chave primária (ID do Postgres)
-            return queryset.get(pk=val)
-        except (ValueError, queryset.model.DoesNotExist):
-            # Se falhar (ex: valor não é inteiro ou não existe), busca pela inscrição imobiliária
-            return get_object_or_404(queryset, inscricao=val)
+            obj = queryset.get(pk=val)
+        except (ValueError, Imovel.DoesNotExist):
+            obj = get_object_or_404(queryset, inscricao=val)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 class ImovelAddUserView(APIView):
@@ -139,11 +141,11 @@ class ImovelAddUserView(APIView):
     permission_classes = [IsGestorOrSupervisor]
 
     def post(self, request, id):
-        # Vincula um morador ao imóvel. Busca de forma flexível por ID primário ou inscrição.
+        qs = escopar_por_cidade(Imovel.objects.all(), request.user, 'cidade')
         try:
-            imovel = Imovel.objects.get(pk=id)
+            imovel = qs.get(pk=id)
         except (ValueError, Imovel.DoesNotExist):
-            imovel = get_object_or_404(Imovel, inscricao=id)
+            imovel = get_object_or_404(qs, inscricao=id)
         user_id = request.data.get('user_id') or request.data.get('userId')
         if not user_id:
             return Response({'detail': 'user_id obrigatório.'}, status=400)
@@ -164,11 +166,11 @@ class ImovelRemoveUserView(APIView):
     permission_classes = [IsGestorOrSupervisor]
 
     def delete(self, request, id, userId):
-        # Remove o vínculo de um morador com o imóvel. Busca flexível por ID primário ou inscrição.
+        qs = escopar_por_cidade(Imovel.objects.all(), request.user, 'cidade')
         try:
-            imovel = Imovel.objects.get(pk=id)
+            imovel = qs.get(pk=id)
         except (ValueError, Imovel.DoesNotExist):
-            imovel = get_object_or_404(Imovel, inscricao=id)
+            imovel = get_object_or_404(qs, inscricao=id)
 
         if imovel.titular_id == int(userId):
             return Response(
@@ -239,23 +241,22 @@ class ConsolidacaoRunView(APIView):
 
     def post(self, request):
         from collection.models import RegistroColeta
-        from django.db.models import Sum
-        from decimal import Decimal
 
         programa_id = request.data.get('programa_id')
         ciclo_id = request.data.get('ciclo_id')
-        
+
         if not programa_id or not ciclo_id:
             return Response({'detail': 'programa_id e ciclo_id são obrigatórios.'}, status=400)
-            
+
         programa = get_object_or_404(Programa, pk=programa_id)
         ciclo = get_object_or_404(Ciclo, pk=ciclo_id, programa=programa)
-        
+
         if ciclo.status == 'fechado':
             return Response({'detail': 'Este ciclo já está fechado e consolidado.'}, status=400)
 
         regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
 
+        # Criado antes do bloco atômico para persistir mesmo em caso de falha
         consolidacao = Consolidacao.objects.create(
             programa=programa,
             ciclo=ciclo,
@@ -264,55 +265,52 @@ class ConsolidacaoRunView(APIView):
         )
 
         try:
-            # Pega coletas no intervalo de datas do ciclo que ainda não foram consolidadas
-            coletas_validas = RegistroColeta.objects.filter(
-                programa=programa,
-                data_hora_coleta__date__gte=ciclo.data_inicio,
-                data_hora_coleta__date__lte=ciclo.data_fim,
-                ciclo_consolidado__isnull=True
-            )
-
-            agregados = coletas_validas.values('imovel').annotate(total=Sum('pontuacao'))
-            
-            total_imoveis = 0
-            total_pontos = Decimal('0')
-
-            for linha in agregados:
-                imovel_id = linha['imovel']
-                pontos = Decimal(linha['total'] or 0)
-                if pontos < regras.minimo_para_beneficio:
-                    continue
-                
-                novo_desconto = (pontos / regras.pontos_por_real).quantize(Decimal('0.01'))
-
-                saldo, _ = SaldoPontos.objects.get_or_create(
-                    imovel_id=imovel_id, programa=programa, ciclo=ciclo,
-                    defaults={'desconto_percentual': Decimal('0')},
+            with transaction.atomic():
+                coletas_validas = RegistroColeta.objects.filter(
+                    programa=programa,
+                    data_hora_coleta__date__gte=ciclo.data_inicio,
+                    data_hora_coleta__date__lte=ciclo.data_fim,
+                    ciclo_consolidado__isnull=True,
                 )
-                
-                aplicavel = aplicar_teto(saldo.desconto_percentual, novo_desconto)
-                saldo.desconto_percentual = (saldo.desconto_percentual + aplicavel).quantize(Decimal('0.01'))
-                
-                teto_programa = programa.desconto_maximo
-                if saldo.desconto_percentual > teto_programa:
-                    saldo.desconto_percentual = teto_programa
-                saldo.save()
+                agregados = coletas_validas.values('imovel').annotate(total=Sum('pontuacao'))
 
-                # Marca as coletas deste imóvel como consolidadas neste ciclo
-                coletas_validas.filter(imovel_id=imovel_id).update(ciclo_consolidado=ciclo)
+                total_imoveis = 0
+                total_pontos = Decimal('0')
 
-                total_imoveis += 1
-                total_pontos += pontos
+                for linha in agregados:
+                    imovel_id = linha['imovel']
+                    pontos = Decimal(linha['total'] or 0)
+                    if pontos < regras.minimo_para_beneficio:
+                        continue
 
-            consolidacao.total_imoveis = total_imoveis
-            consolidacao.total_pontos = total_pontos
-            consolidacao.status = 'concluida'
-            consolidacao.save()
-            
-            # Fecha o ciclo
-            ciclo.status = 'fechado'
-            ciclo.save()
-            
+                    novo_desconto = (pontos / regras.pontos_por_real).quantize(Decimal('0.01'))
+
+                    saldo, _ = SaldoPontos.objects.get_or_create(
+                        imovel_id=imovel_id, programa=programa, ciclo=ciclo,
+                        defaults={'desconto_percentual': Decimal('0')},
+                    )
+
+                    aplicavel = aplicar_teto(saldo.desconto_percentual, novo_desconto)
+                    saldo.desconto_percentual = (saldo.desconto_percentual + aplicavel).quantize(Decimal('0.01'))
+
+                    teto_programa = programa.desconto_maximo
+                    if saldo.desconto_percentual > teto_programa:
+                        saldo.desconto_percentual = teto_programa
+                    saldo.save()
+
+                    coletas_validas.filter(imovel_id=imovel_id).update(ciclo_consolidado=ciclo)
+
+                    total_imoveis += 1
+                    total_pontos += pontos
+
+                consolidacao.total_imoveis = total_imoveis
+                consolidacao.total_pontos = total_pontos
+                consolidacao.status = 'concluida'
+                consolidacao.save()
+
+                ciclo.status = 'fechado'
+                ciclo.save()
+
         except Exception as e:
             consolidacao.status = 'falhou'
             consolidacao.observacao = str(e)
@@ -329,7 +327,7 @@ class ConsolidacaoListView(generics.ListAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = Consolidacao.objects.select_related('programa', 'executada_por').all().order_by('-executada_em')
+        qs = Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo').all().order_by('-executada_em')
         
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
@@ -345,7 +343,7 @@ class ConsolidacaoDetailView(generics.RetrieveAPIView):
     """ GET /consolidations/:id — detalhe de uma consolidação."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = ConsolidacaoSerializer
-    queryset = Consolidacao.objects.select_related('programa', 'executada_por')
+    queryset = Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo')
 
 
 # ---------------------------------------------------------------------------
@@ -453,8 +451,6 @@ class ReportCollectionsByCycleView(APIView):
 
     def get(self, request):
         from collection.models import RegistroColeta
-        from program.models import Ciclo
-        from django.db.models import Count, Sum
 
         qs = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
         
