@@ -2,15 +2,44 @@ from rest_framework import serializers
 from .models import (
     Programa, RegraPrograma,
     Imovel, SaldoPontos, Consolidacao,
-    ConstantePontuacao,
+    ConstantePontuacao, Ciclo,
 )
 
 
+class CicloSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ciclo
+        fields = ['id', 'programa', 'nome', 'tipo', 'data_inicio', 'data_fim', 'status', 'criado_em']
+        read_only_fields = ['id', 'criado_em']
+
+    def validate(self, data):
+        data_inicio = data.get('data_inicio', getattr(self.instance, 'data_inicio', None))
+        data_fim = data.get('data_fim', getattr(self.instance, 'data_fim', None))
+        programa = data.get('programa', getattr(self.instance, 'programa', None))
+
+        if data_inicio and data_fim and data_fim < data_inicio:
+            raise serializers.ValidationError('data_fim deve ser maior ou igual a data_inicio.')
+
+        if programa and data_inicio and data_fim:
+            sobrepostos = Ciclo.objects.filter(
+                programa=programa,
+                data_inicio__lte=data_fim,
+                data_fim__gte=data_inicio,
+            ).exclude(pk=self.instance.pk if self.instance else None)
+            if sobrepostos.exists():
+                raise serializers.ValidationError(
+                    'Já existe um ciclo com datas sobrepostas para este programa.'
+                )
+        return data
+
+
 class ImovelSerializer(serializers.ModelSerializer):
+    titular_nome = serializers.CharField(source='titular.nome', read_only=True)
+
     class Meta:
         model = Imovel
         fields = [
-            'id', 'inscricao', 'titular', 'cep', 'logradouro', 'numero',
+            'id', 'inscricao', 'titular', 'titular_nome', 'cep', 'logradouro', 'numero',
             'complemento', 'bairro', 'cidade', 'estado', 'num_moradores',
             'latitude', 'longitude', 'geocodificacao_falhou',
             'ativo', 'data_adesao',
@@ -69,11 +98,15 @@ class SaldoPontosSerializer(serializers.ModelSerializer):
 
 
 class ConsolidacaoSerializer(serializers.ModelSerializer):
+    programa_nome = serializers.CharField(source='programa.nome', read_only=True)
+    executada_por_nome = serializers.CharField(source='executada_por.nome', read_only=True)
+    ciclo_nome = serializers.CharField(source='ciclo.nome', read_only=True)
+
     class Meta:
         model = Consolidacao
         fields = [
-            'id', 'programa', 'executada_em', 'executada_por',
-            'status', 'total_imoveis', 'total_pontos', 'observacao',
+            'id', 'programa', 'programa_nome', 'ciclo', 'ciclo_nome', 'executada_em', 'executada_por',
+            'executada_por_nome', 'status', 'total_imoveis', 'total_pontos', 'observacao',
         ]
         read_only_fields = [
             'id', 'executada_em', 'executada_por', 'status',

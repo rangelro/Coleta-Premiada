@@ -95,7 +95,8 @@ class Command(BaseCommand):
             # Calcula pontuação localmente: peso × constante configurável
             peso_kg = Decimal(str(dados.get('peso_total_kg', 0)))
             constante = ConstantePontuacao.get_valor()
-            pontuacao = (peso_kg * constante.pontos_por_kg).quantize(Decimal('0.01'))
+            pontos_por_kg = Decimal(str(constante.pontos_por_kg))
+            pontuacao = (peso_kg * pontos_por_kg).quantize(Decimal('0.01'))
 
             # Persiste o registro no PostgreSQL
             data_hora_raw = dados.get('data_hora')
