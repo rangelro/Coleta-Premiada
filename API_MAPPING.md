@@ -329,12 +329,14 @@ Requer Bearer token do morador logado.
 
 | Método | Endpoint | Auth | Descrição |
 |---|---|---|---|
-| GET | `/program/programs` | Autenticado | Lista programas |
-| POST | `/program/programs` | Gestor | Cria programa |
-| GET | `/program/programs/:pk` | Autenticado | Detalhe (inclui regras aninhadas) |
-| PATCH | `/program/programs/:pk` | Gestor | Atualização parcial |
-| GET | `/program/programs/:id/rules` | Autenticado | Regras do programa |
-| PATCH | `/program/programs/:id/rules` | Gestor | Atualiza regras |
+| GET | `/program/programs` | Autenticado | Lista programas (escopado por cidade para gestor/supervisor) |
+| POST | `/program/programs` | **Gestor** (não gerente_geral) | Cria programa; `cidade` obrigatória e deve ser a cidade do gestor |
+| GET | `/program/programs/:pk` | Autenticado | Detalhe — gestor/supervisor recebem 404 para outra cidade |
+| PATCH | `/program/programs/:pk` | **Gestor** (não gerente_geral) | Atualização parcial |
+| GET | `/program/programs/:id/rules` | Autenticado | Regras do programa (escopado por cidade) |
+| PATCH | `/program/programs/:id/rules` | **Gestor** (não gerente_geral) | Atualiza regras |
+
+> **gerente_geral**: somente leitura nestes endpoints (escrita retorna 403).
 
 **Serializer Programa:**
 ```json
@@ -342,6 +344,8 @@ Requer Bearer token do morador logado.
   "id": 1,
   "nome": "string",
   "descricao": "string",
+  "cidade": 1,
+  "cidade_nome": "Pau dos Ferros",
   "data_inicio": "2026-01-01",
   "data_fim": "2026-12-31",
   "ativo": true,
@@ -360,9 +364,9 @@ Requer Bearer token do morador logado.
 
 | Método | Endpoint | Auth | Descrição |
 |---|---|---|---|
-| POST | `/program/consolidations/run` | Gestor | Executa consolidação de ciclo |
-| GET | `/program/consolidations` | Gestor/Supervisor | Lista com filtro `programa_id` |
-| GET | `/program/consolidations/:pk` | Gestor/Supervisor | Detalhe |
+| POST | `/program/consolidations/run` | **Gestor** (não gerente_geral) | Executa consolidação; gestor só pode consolidar programas da própria cidade (404 para outra) |
+| GET | `/program/consolidations` | Gestor/Supervisor/Gerente Geral | Lista — escopado por cidade para gestor/supervisor |
+| GET | `/program/consolidations/:pk` | Gestor/Supervisor/Gerente Geral | Detalhe — escopado por cidade para gestor/supervisor |
 
 **POST `/program/consolidations/run` — Request:**
 ```json

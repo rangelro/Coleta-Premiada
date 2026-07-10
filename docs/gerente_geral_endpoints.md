@@ -232,13 +232,30 @@ sendo uma string (ex.: `"Fortaleza"`), igual antes.
   coletas/saldos de imóveis da cidade do gestor/supervisor; gerente_geral
   continua vendo os números agregados do sistema inteiro.
 
-### Demais endpoints de `program` (`/programs`, `/programs/:id/rules`, `/consolidations/*`, `/scoring-constant`)
-Sem mudança de schema — apenas herdam o broadening de `IsGestor`/
-`IsSupervisor`/`IsGestorOrSupervisor` (gerente_geral passa a ter acesso onde
-antes só gestor/supervisor tinham). **Não são escopados por cidade**:
-`ConsolidacaoRunView`/`ConsolidacaoListView` operam sobre o programa inteiro
-(processo em lote sem recorte natural por cidade) e `ConstantePontuacaoView`
-é uma constante global do sistema.
+### `GET /api/program/programs`, `GET /api/program/programs/:id`
+- **Perfil exigido:** qualquer autenticado para leitura.
+- **Escopo por cidade (novo):** `gestor`/`supervisor` só veem programas da própria cidade; `gerente_geral` vê todos os programas de todas as cidades.
+- **Escrita (`POST`, `PATCH`):** **exclusiva de `gestor`** — `gerente_geral` recebe `403`. A gestão operacional do programa é responsabilidade de quem está na cidade.
+- **Novo campo `cidade`** (PK de `Cidade`, escrita) e **`cidade_nome`** (somente leitura) na resposta.
+
+### `GET/PATCH /api/program/programs/:id/rules`
+- **Leitura:** qualquer autenticado, escopado por cidade (gestor/supervisor só veem regras de programas da própria cidade).
+- **Escrita (`PATCH`):** **exclusiva de `gestor`** — `gerente_geral` recebe `403`.
+
+### `GET/POST/PATCH/DELETE /api/program/cycles`
+- **Leitura:** `gestor`, `supervisor` e `gerente_geral`, escopado por cidade (`gestor`/`supervisor` só veem ciclos de programas da própria cidade).
+- **Escrita:** **exclusiva de `gestor`/`supervisor`** — `gerente_geral` recebe `403`.
+
+### `POST /api/program/consolidations/run`
+- **Perfil exigido:** **exclusivo de `gestor`** — `gerente_geral` recebe `403`.
+- O gestor só pode consolidar programas da própria cidade (retorna `404` para programas de outra cidade).
+
+### `GET /api/program/consolidations`, `GET /api/program/consolidations/:id`
+- **Perfil exigido:** `gestor`/`supervisor`/`gerente_geral`
+- **Escopo por cidade (novo):** `gestor`/`supervisor` só veem consolidações de programas da própria cidade; `gerente_geral` vê todas.
+
+### `/api/program/scoring-constant`
+Sem mudança — constante global do sistema; `gerente_geral` mantém acesso completo.
 
 ---
 

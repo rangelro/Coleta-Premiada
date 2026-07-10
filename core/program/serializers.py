@@ -72,14 +72,15 @@ class RegraProgramaSerializer(serializers.ModelSerializer):
 
 class ProgramaSerializer(serializers.ModelSerializer):
     regras = RegraProgramaSerializer(read_only=True)
+    cidade_nome = serializers.CharField(source='cidade.nome', read_only=True)
 
     class Meta:
         model = Programa
         fields = [
-            'id', 'nome', 'descricao', 'data_inicio', 'data_fim',
-            'ativo', 'desconto_maximo', 'regras',
+            'id', 'nome', 'descricao', 'cidade', 'cidade_nome',
+            'data_inicio', 'data_fim', 'ativo', 'desconto_maximo', 'regras',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'cidade_nome']
 
     def validate(self, data):
         if data.get('data_fim') and data.get('data_inicio') \
@@ -87,6 +88,19 @@ class ProgramaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'data_fim deve ser posterior a data_inicio.'
             )
+
+        request = self.context.get('request')
+        if request and getattr(request.user, 'perfil', None) == 'gestor':
+            cidade = data.get('cidade', getattr(self.instance, 'cidade', None))
+            if cidade is None:
+                raise serializers.ValidationError(
+                    {'cidade': 'Cidade é obrigatória para gestor.'}
+                )
+            if not request.user.cidade_id or request.user.cidade_id != cidade.pk:
+                raise serializers.ValidationError(
+                    {'cidade': 'O gestor só pode criar ou editar programas da própria cidade.'}
+                )
+
         return data
 
 

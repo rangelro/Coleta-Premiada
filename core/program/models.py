@@ -7,6 +7,13 @@ class Programa(models.Model):
     """Programa Coleta Premiada de um ciclo (geralmente um ano)."""
     nome = models.CharField(max_length=120)
     descricao = models.TextField(blank=True)
+    cidade = models.ForeignKey(
+        'accounts.Cidade',
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name='programas',
+        help_text='Cidade à qual este programa pertence.',
+    )
     data_inicio = models.DateField()
     data_fim = models.DateField()
     ativo = models.BooleanField(default=True)

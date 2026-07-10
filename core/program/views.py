@@ -19,7 +19,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from accounts.permissions import IsGestor, IsGestorOrSupervisor, IsSupervisor, ReadOnlyOrGestor
+from accounts.permissions import (
+    IsGestor, IsGestorOrSupervisor, IsSupervisor, ReadOnlyOrGestor,
+    IsGestorDoPrograma, ReadOnlyOrGestorDoPrograma,
+    ReadOnlyOrGestorOuSupervisorDoPrograma,
+)
 from accounts.models import Usuario
 from accounts.scoping import escopar_por_cidade, usuario_pode_ver_cidade
 
@@ -43,10 +47,14 @@ class CicloViewSet(viewsets.ModelViewSet):
     CRUD para gerenciar os ciclos de um programa.
     """
     serializer_class = CicloSerializer
-    permission_classes = [IsGestorOrSupervisor]
+    permission_classes = [ReadOnlyOrGestorOuSupervisorDoPrograma]
 
     def get_queryset(self):
-        qs = Ciclo.objects.all().order_by('-data_inicio')
+        qs = escopar_por_cidade(
+            Ciclo.objects.all().order_by('-data_inicio'),
+            self.request.user,
+            'programa__cidade__nome',
+        )
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
             qs = qs.filter(programa_id=programa_id)
@@ -188,39 +196,54 @@ class ImovelRemoveUserView(APIView):
 # ---------------------------------------------------------------------------
 class ProgramaListCreateView(generics.ListCreateAPIView):
     """
-     GET  /programs — lista programas (qualquer autenticado).
-     POST /programs — cria programa (somente gestor).
+     GET  /programs — lista programas (qualquer autenticado, escopado por cidade).
+     POST /programs — cria programa (somente gestor, sem gerente_geral).
     """
     serializer_class = ProgramaSerializer
-    queryset = Programa.objects.all().prefetch_related('regras')
-    permission_classes = [ReadOnlyOrGestor]
+    permission_classes = [ReadOnlyOrGestorDoPrograma]
+
+    def get_queryset(self):
+        return escopar_por_cidade(
+            Programa.objects.all().prefetch_related('regras'),
+            self.request.user,
+            'cidade__nome',
+        )
 
 
 class ProgramaDetailView(generics.RetrieveUpdateAPIView):
     """
-     GET   /programs/:id — detalha um programa.
-     PATCH /programs/:id — atualiza um programa (gestor).
+     GET   /programs/:id — detalha um programa (escopado por cidade; 404 para outra cidade).
+     PATCH /programs/:id — atualiza um programa (somente gestor, sem gerente_geral).
     """
     serializer_class = ProgramaSerializer
-    queryset = Programa.objects.all().prefetch_related('regras')
-    permission_classes = [ReadOnlyOrGestor]
+    permission_classes = [ReadOnlyOrGestorDoPrograma]
 
+    def get_queryset(self):
+        return escopar_por_cidade(
+            Programa.objects.all().prefetch_related('regras'),
+            self.request.user,
+            'cidade__nome',
+        )
 
 
 class ProgramaRulesView(APIView):
     """
-     GET   /programs/:id/rules — retorna regras do programa.
-     PATCH /programs/:id/rules — atualiza regras do programa (gestor).
+     GET   /programs/:id/rules — retorna regras do programa (escopado por cidade).
+     PATCH /programs/:id/rules — atualiza regras do programa (somente gestor, sem gerente_geral).
     """
-    permission_classes = [ReadOnlyOrGestor]
+    permission_classes = [ReadOnlyOrGestorDoPrograma]
+
+    def _get_programa(self, request, id):
+        qs = escopar_por_cidade(Programa.objects.all(), request.user, 'cidade__nome')
+        return get_object_or_404(qs, pk=id)
 
     def get(self, request, id):
-        programa = get_object_or_404(Programa, pk=id)
+        programa = self._get_programa(request, id)
         regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
         return Response(RegraProgramaSerializer(regras).data)
 
     def patch(self, request, id):
-        programa = get_object_or_404(Programa, pk=id)
+        programa = self._get_programa(request, id)
         regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
         serializer = RegraProgramaSerializer(regras, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -237,7 +260,7 @@ class ConsolidacaoRunView(APIView):
     Inicia o cálculo de benefícios para um ciclo aberto.
     Payload: { "programa_id": 1, "ciclo_id": 1 }
     """
-    permission_classes = [IsGestor]
+    permission_classes = [IsGestorDoPrograma]
 
     def post(self, request):
         from collection.models import RegistroColeta
@@ -248,7 +271,8 @@ class ConsolidacaoRunView(APIView):
         if not programa_id or not ciclo_id:
             return Response({'detail': 'programa_id e ciclo_id são obrigatórios.'}, status=400)
 
-        programa = get_object_or_404(Programa, pk=programa_id)
+        programa_qs = escopar_por_cidade(Programa.objects.all(), request.user, 'cidade__nome')
+        programa = get_object_or_404(programa_qs, pk=programa_id)
         ciclo = get_object_or_404(Ciclo, pk=ciclo_id, programa=programa)
 
         if ciclo.status == 'fechado':
@@ -321,14 +345,18 @@ class ConsolidacaoRunView(APIView):
 
 
 class ConsolidacaoListView(generics.ListAPIView):
-    """ GET /consolidations — lista consolidações já executadas."""
+    """ GET /consolidations — lista consolidações já executadas (escopado por cidade)."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = ConsolidacaoSerializer
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        qs = Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo').all().order_by('-executada_em')
-        
+        qs = escopar_por_cidade(
+            Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo').all().order_by('-executada_em'),
+            self.request.user,
+            'programa__cidade__nome',
+        )
+
         programa_id = self.request.query_params.get('programa_id')
         if programa_id:
             try:
@@ -340,10 +368,16 @@ class ConsolidacaoListView(generics.ListAPIView):
 
 
 class ConsolidacaoDetailView(generics.RetrieveAPIView):
-    """ GET /consolidations/:id — detalhe de uma consolidação."""
+    """ GET /consolidations/:id — detalhe de uma consolidação (escopado por cidade)."""
     permission_classes = [IsGestorOrSupervisor]
     serializer_class = ConsolidacaoSerializer
-    queryset = Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo')
+
+    def get_queryset(self):
+        return escopar_por_cidade(
+            Consolidacao.objects.select_related('programa', 'executada_por', 'ciclo'),
+            self.request.user,
+            'programa__cidade__nome',
+        )
 
 
 # ---------------------------------------------------------------------------

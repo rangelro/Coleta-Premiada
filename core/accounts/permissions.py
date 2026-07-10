@@ -3,9 +3,14 @@ Permissões customizadas baseadas no campo `perfil` do Usuario.
 
 Perfis disponíveis: 'supervisor', 'morador', 'gestor', 'gerente_geral'.
 
-`gerente_geral` é hierarquicamente superior a `gestor`: por isso as classes
-que hoje representam privilégios de gestor/supervisor também aceitam
-`gerente_geral`, evitando duplicar checagens em cada view.
+`gerente_geral` é hierarquicamente superior a `gestor` na maioria dos domínios:
+por isso as classes genéricas (IsGestor, IsGestorOrSupervisor, ReadOnlyOrGestor)
+aceitam `gerente_geral` automaticamente.
+
+EXCEÇÃO: domínio "programa" (Programa, Regras, Ciclos, Consolidação).
+A gestão operacional do programa é exclusiva de quem está na cidade (gestor, e
+supervisor no caso de Ciclos). Use as classes `*DoPrograma` nesses endpoints —
+elas explicitamente excluem `gerente_geral` das operações de escrita.
 """
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
@@ -79,3 +84,38 @@ class ReadOnlyOrGestor(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return getattr(user, 'perfil', None) in PERFIS_GESTOR
+
+
+# ---------------------------------------------------------------------------
+# Exceções à hierarquia padrão — domínio "programa"
+# gerente_geral NÃO tem escrita sobre Programa, Regras, Ciclos e Consolidação.
+# ---------------------------------------------------------------------------
+
+class IsGestorDoPrograma(_PerfilPermission):
+    """Escrita em Programa/Regras/Consolidação: exclusiva de gestor (NÃO inclui gerente_geral)."""
+    perfis_permitidos = ('gestor',)
+
+
+class ReadOnlyOrGestorDoPrograma(BasePermission):
+    """Leitura para qualquer autenticado; escrita restrita a gestor (NÃO inclui gerente_geral)."""
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated and user.ativo):
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        return getattr(user, 'perfil', None) == 'gestor'
+
+
+class ReadOnlyOrGestorOuSupervisorDoPrograma(BasePermission):
+    """
+    Leitura para gestor/supervisor/gerente_geral; escrita restrita a gestor/supervisor
+    (NÃO inclui gerente_geral). Usada em CicloViewSet.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated and user.ativo):
+            return False
+        if request.method in SAFE_METHODS:
+            return getattr(user, 'perfil', None) in PERFIS_ADMINISTRATIVOS
+        return getattr(user, 'perfil', None) in ('gestor', 'supervisor')
