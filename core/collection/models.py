@@ -28,6 +28,12 @@ class RegistroColeta(models.Model):
         related_name='coletas_consolidadas',
         help_text='Ciclo no qual esta coleta foi convertida em benefícios'
     )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='coletas_registradas',
+        help_text='Usuário (Gestor/Supervisor) que registrou a coleta manualmente. Nulo se veio do app.'
+    )
 
     class Meta:
         ordering = ['-id_microservico']

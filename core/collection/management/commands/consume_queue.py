@@ -78,58 +78,22 @@ class Command(BaseCommand):
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                 return
 
-            # Resolve o programa ativo na data da coleta
-            hoje = timezone.now().date()
-            programa = Programa.objects.filter(
-                ativo=True, data_inicio__lte=hoje, data_fim__gte=hoje,
-            ).first()
-
-            if programa is None:
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"  Nenhum programa ativo em {hoje}. "
-                        f"Coleta {coleta_id} registrada sem saldo."
-                    )
-                )
-
-            # Calcula pontuação localmente: peso × constante configurável
+            from collection.services.coleta_service import registrar_nova_coleta
             peso_kg = Decimal(str(dados.get('peso_total_kg', 0)))
-            constante = ConstantePontuacao.get_valor()
-            pontos_por_kg = Decimal(str(constante.pontos_por_kg))
-            pontuacao = (peso_kg * pontos_por_kg).quantize(Decimal('0.01'))
-
-            # Persiste o registro no PostgreSQL
             data_hora_raw = dados.get('data_hora')
-            RegistroColeta.objects.create(
-                id_microservico  = coleta_id,
-                imovel           = imovel,
-                programa         = programa,
-                pontuacao        = pontuacao,
-                data_hora_coleta = parse_datetime(data_hora_raw) if data_hora_raw else None,
-                peso_kg          = Decimal(str(dados.get('peso_total_kg', 0))),
-            )
 
-            # Atualiza o saldo do imóvel apenas quando há programa ativo
-            desconto_efetivo = Decimal('0')
-            if programa is not None:
-                regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
-                ciclo_atual = timezone.now().strftime('%m-%Y')
-                saldo, _ = SaldoPontos.objects.get_or_create(
-                    imovel=imovel, programa=programa, ciclo=ciclo_atual,
-                    defaults={'desconto_percentual': 0}
-                )
-                # Converte pontos em percentual de desconto antes de aplicar o teto
-                novo_desconto = (pontuacao / regras.pontos_por_real).quantize(Decimal('0.01'))
-                desconto_efetivo = aplicar_teto(saldo.desconto_percentual, novo_desconto)
-                if desconto_efetivo > 0:
-                    saldo.desconto_percentual = (saldo.desconto_percentual + desconto_efetivo).quantize(Decimal('0.01'))
-                    saldo.save()
+            coleta = registrar_nova_coleta(
+                imovel=imovel,
+                peso_kg=peso_kg,
+                data_hora=data_hora_raw,
+                id_microservico=coleta_id,
+                registrado_por=None
+            )
 
             self.stdout.write(
                 f"  Registrado: inscricao={inscricao} (id={imovel.id}) "
-                f"| programa={programa} "
-                f"| {pontuacao} pts recebidos "
-                f"| {desconto_efetivo}% aplicados no saldo"
+                f"| programa={coleta.programa} "
+                f"| {coleta.pontuacao} pts recebidos "
             )
             ch.basic_ack(delivery_tag=method.delivery_tag)
 

@@ -97,6 +97,31 @@ class ColetaListCreateView(generics.ListCreateAPIView):
             return [IsGestorOrSupervisor()]
         return [IsAuthenticated()]
 
+    def create(self, request, *args, **kwargs):
+        from collection.services.coleta_service import registrar_nova_coleta
+        from program.models import Imovel
+        from decimal import Decimal
+        
+        imovel_id = request.data.get('imovel')
+        peso_kg = request.data.get('peso_kg')
+        data_hora = request.data.get('data_hora_coleta')
+        foto = request.FILES.get('foto')
+
+        if not imovel_id or not peso_kg:
+            return Response({'error': 'imovel e peso_kg são obrigatórios'}, status=status.HTTP_400_BAD_REQUEST)
+
+        imovel = get_object_or_404(Imovel, pk=imovel_id)
+        
+        coleta = registrar_nova_coleta(
+            imovel=imovel,
+            peso_kg=Decimal(str(peso_kg)),
+            data_hora=data_hora,
+            registrado_por=request.user,
+            foto_file=foto
+        )
+        serializer = self.get_serializer(coleta)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class ColetaDetailView(generics.RetrieveAPIView):
     """🔒 GET /collections/:id — detalhe de uma coleta."""
@@ -134,14 +159,35 @@ class EvidenciaListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return Evidencia.objects.filter(coleta_id=self.kwargs['id'])
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        from collection.services.storage import upload_arquivo
+        
         coleta = get_object_or_404(RegistroColeta, pk=self.kwargs['id'])
-        user = self.request.user
-
-        if user.perfil == 'morador' and coleta.imovel.titular_id != user.id:
+        user = request.user
+        
+        if getattr(user, 'perfil', None) == 'morador' and coleta.imovel.titular_id != user.id:
             raise PermissionError('Morador só pode anexar evidência em coleta própria.')
 
-        serializer.save(coleta=coleta, enviada_por=user)
+        arquivo = request.FILES.get('arquivo')
+        if not arquivo:
+            # Caso não mandem o arquivo cru, tenta ver se mandaram arquivo_url direto
+            arquivo_url = request.data.get('arquivo_url')
+            if not arquivo_url:
+                return Response({'error': 'Nenhum arquivo ou arquivo_url enviado.'}, status=status.HTTP_400_BAD_REQUEST)
+            url = arquivo_url
+        else:
+            url = upload_arquivo(arquivo, content_type=arquivo.content_type)
+            
+        descricao = request.data.get('descricao', '')
+        
+        evidencia = Evidencia.objects.create(
+            coleta=coleta,
+            arquivo_url=url,
+            descricao=descricao,
+            enviada_por=user
+        )
+        serializer = self.get_serializer(evidencia)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +216,7 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = Contestacao.objects.select_related(
-            'coleta', 'aberta_por', 'analisada_por',
+            'coleta__imovel', 'aberta_por', 'analisada_por',
         ).all().order_by('-aberta_em')
         user = self.request.user
         if getattr(user, 'perfil', None) == 'morador':
@@ -200,7 +246,7 @@ class ContestacaoDetailView(generics.RetrieveUpdateAPIView):
     🔒 PATCH /disputes/:id — gestor aceita ou nega a contestação.
     """
     queryset = Contestacao.objects.select_related(
-        'coleta', 'aberta_por', 'analisada_por',
+        'coleta__imovel', 'aberta_por', 'analisada_por',
     )
 
     def get_serializer_class(self):
