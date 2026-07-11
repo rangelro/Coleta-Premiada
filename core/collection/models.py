@@ -7,8 +7,8 @@ class RegistroColeta(models.Model):
     """Coleta recebida da fila RabbitMQ e registrada no Core."""
 
     id_microservico = models.CharField(
-        max_length=50, unique=True,
-        help_text='ID gerado pelo microserviço (MongoDB)',
+        max_length=50, unique=True, null=True, blank=True,
+        help_text='ID gerado pelo microserviço (MongoDB). Nulo para coletas manuais.',
     )
     imovel = models.ForeignKey(Imovel, on_delete=models.PROTECT, related_name='coletas')
     programa = models.ForeignKey(
