@@ -1,0 +1,111 @@
+@startuml comunicacao_servicos
+!theme plain
+skinparam backgroundColor #f8f9fa
+skinparam componentStyle rectangle
+skinparam defaultFontName Sans
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+
+title << Fluxo de Comunicação entre Serviços >>\nColeta Premiada
+
+' === Frontend → Core (Login) ===
+group Login (Email/Google)
+  actor "Usuário Web" as USER
+  participant "Frontend\n(Next.js)" as FE
+  participant "Middleware\n(proxy.ts)" as MW
+  participant "Core API\n(Django)" as CORE
+  participant "PostgreSQL" as PG
+
+  USER -> FE: submit login
+  FE -> CORE: POST /api/token/
+  CORE --> FE: { access, refresh }
+  FE -> FE: set httpOnly cookies
+  FE -> CORE: GET /api/accounts/auth/me
+  CORE --> FE: { id, perfil, ... }
+  FE -> USER: redirect /{perfil}
+  note over MW: Request subsequente:\nvalida token → refresh se expirado
+end
+
+' === Frontend → Backends (Dashboard) ===
+group Dashboard Web
+  USER -> FE: acessa /dashboard
+  FE -> CORE: GET /api/program/reports/ranking
+  FE -> MS: GET /api/supervisor/imoveis
+  FE -> FE: render Server Components
+  USER <-- FE: HTML
+end
+
+' === Mobile → MS (Coleta) ===
+group Coleta Mobile (Online)
+  actor "Coletor" as COL
+  participant "App Mobile\n(Expo)" as APP
+  participant "Collection MS\n(Django)" as MS
+  participant "MinIO" as MINIO
+  participant "MongoDB" as MONGO
+
+  COL -> APP: identificar imóvel
+  APP -> MS: GET /api/imoveis/proximos?lat&lng&raio
+  MS --> APP: imóveis próximos
+  COL -> APP: pesar + foto
+  APP -> MS: POST /api/coletas
+  note over APP: Axios envia multipart\ncom foto
+  MS -> MINIO: upload_foto()
+  MINIO --> MS: foto_url
+  MS -> MONGO: Coleta.objects.create()
+  MS --> APP: { coleta_id, status }
+  APP -> COL: sucesso
+end
+
+group Coleta Mobile (Offline)
+  COL -> APP: pesar + foto
+  APP -> APP: SQLite.save(offline_id)
+  APP -> MS: POST /api/coletas (falha)
+  note over APP: Axios interceptor captura\nNetwork Error → OfflineSavedError
+  APP -> COL: "Salvo offline"
+  ...
+  APP -> APP: useAutoSync() background
+  APP -> MS: POST /api/sincronizar (batch)
+  MS --> APP: { sincronizados, falhas }
+  APP -> APP: SQLite.markEnviada()
+end
+
+' === MS → Core (Sincronização Assíncrona) ===
+group Sincronização Assíncrona (RabbitMQ)
+
+  === Core publica Imovel ===
+  participant "Core" as CORE2
+  participant "RabbitMQ" as RMQ
+  participant "Collection MS" as MS2
+
+  CORE2 -> CORE2: Imovel.save()
+  CORE2 -> RMQ: publish('imoveis', payload)
+  RMQ -> MS2: deliver('imoveis')
+  MS2 -> MS2: ImovelManager.upsert_from_evento()
+  MS2 -> MS2: basic_ack()
+
+  === MS publica Coleta ===
+  MS2 -> MS2: Coleta criada (online)
+  MS2 -> RMQ: publish('coletas', payload)
+  RMQ -> CORE2: deliver('coletas')
+  CORE2 -> CORE2: consume_queue()
+  note right CORE2: Verifica duplicata\nBusca imóvel + programa\nCalcula pontuação\nCria RegistroColeta\nAtualiza SaldoPontos
+  CORE2 -> CORE2: basic_ack()
+end
+
+' === MS → Core (Proxy Síncrono) ===
+group Proxy de Perfil (Supervisor)
+  actor "Supervisor" as SUP
+  participant "Frontend" as FE2
+  participant "Collection MS" as MS3
+  participant "Core API" as CORE3
+
+  SUP -> FE2: acessa supervisor/imoveis
+  FE2 -> MS3: GET /api/supervisor/imoveis\n(Authorization: Bearer <core_jwt>)
+  MS3 -> MS3: _decode_core_jwt()
+  MS3 -> CORE3: GET /api/accounts/auth/me\n(forward JWT)
+  CORE3 --> MS3: { id, perfil: 'supervisor', cidade: 'Fortal' }
+  MS3 -> MS3: valida perfil
+  MS3 --> FE2: imóveis escopados por cidade
+end
+
+@enduml
