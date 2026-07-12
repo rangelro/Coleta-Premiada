@@ -129,7 +129,18 @@ class ConsolidacaoSerializer(serializers.ModelSerializer):
 
 
 class ConstantePontuacaoSerializer(serializers.ModelSerializer):
+    atualizado_por = serializers.SerializerMethodField()
+
     class Meta:
         model = ConstantePontuacao
         fields = ['pontos_por_kg', 'atualizado_em', 'atualizado_por']
         read_only_fields = ['atualizado_em', 'atualizado_por']
+        
+    def get_atualizado_por(self, obj):
+        if obj.atualizado_por:
+            return {
+                "id": obj.atualizado_por.id,
+                "email": obj.atualizado_por.email,
+                "nome": obj.atualizado_por.nome if hasattr(obj.atualizado_por, 'nome') else None
+            }
+        return None

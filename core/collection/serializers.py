@@ -13,8 +13,9 @@ class RegistroColetaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'id_microservico', 'imovel', 'imovel_inscricao', 'titular_nome',
             'programa', 'programa_nome', 'pontuacao', 'data_hora_coleta', 'peso_kg',
+            'registrado_por'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'id_microservico', 'pontuacao', 'registrado_por']
 
 
 class EvidenciaSerializer(serializers.ModelSerializer):
@@ -31,11 +32,18 @@ class ContestacaoCreateSerializer(serializers.ModelSerializer):
 
 
 class ContestacaoSerializer(serializers.ModelSerializer):
+    morador_nome = serializers.CharField(source='aberta_por.nome', read_only=True)
+    imovel_inscricao = serializers.CharField(source='coleta.imovel.inscricao', read_only=True)
+    coleta_peso = serializers.CharField(source='coleta.peso_kg', read_only=True)
+    coleta_data = serializers.DateTimeField(source='coleta.data_hora_coleta', read_only=True)
+    coleta_pontuacao = serializers.CharField(source='coleta.pontuacao', read_only=True)
+
     class Meta:
         model = Contestacao
         fields = [
             'id', 'coleta', 'aberta_por', 'motivo', 'status',
             'analisada_por', 'resposta', 'aberta_em', 'atualizada_em',
+            'morador_nome', 'imovel_inscricao', 'coleta_peso', 'coleta_data', 'coleta_pontuacao'
         ]
         read_only_fields = [
             'id', 'aberta_por', 'analisada_por',
