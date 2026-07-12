@@ -19,6 +19,7 @@ class AuditLog(models.Model):
     dados_depois = models.JSONField(null=True, blank=True)
     ip_origem = models.GenericIPAddressField(null=True, blank=True)
     endpoint = models.CharField(max_length=255, null=True, blank=True)
+    cidade = models.CharField(max_length=100, null=True, blank=True, db_index=True)
 
     class Meta:
         db_table = 'audit_log'

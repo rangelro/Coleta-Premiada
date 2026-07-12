@@ -14,7 +14,8 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 
-from accounts.permissions import IsGestor
+from accounts.permissions import IsGestor, IsGerenteGeral
+from accounts.scoping import escopar_por_cidade
 from config.pagination import StandardResultsSetPagination
 
 from .models import AuditLog
@@ -23,13 +24,14 @@ from .serializers import AuditLogSerializer
 OPERACOES_VALIDAS = {choice[0] for choice in AuditLog.OPERACAO_CHOICES}
 
 
-def filtrar_audit_logs(params):
+def filtrar_audit_logs(params, user):
     """
     Aplica os filtros suportados por /logs e /logs/export a partir dos
     query params da requisição: usuario_id, tabela, operacao, data_inicio,
-    data_fim e objeto_id.
+    data_fim, objeto_id e cidade (este último só tem efeito para gerente_geral).
     """
     qs = AuditLog.objects.all()
+    qs = escopar_por_cidade(qs, user, 'cidade')
 
     usuario_id = params.get('usuario_id')
     if usuario_id:
@@ -71,6 +73,10 @@ def filtrar_audit_logs(params):
             raise ValidationError({'data_fim': 'Use o formato YYYY-MM-DD.'})
         qs = qs.filter(timestamp__date__lte=data_fim)
 
+    cidade = params.get('cidade')
+    if cidade and getattr(user, 'perfil', None) == 'gerente_geral':
+        qs = qs.filter(cidade=cidade)
+
     return qs
 
 
@@ -84,12 +90,12 @@ class AuditLogListView(generics.ListAPIView):
     Filtros suportados via query params: usuario_id, tabela, operacao,
     data_inicio, data_fim, objeto_id. Paginação obrigatória (máx. 100/página).
     """
-    permission_classes = [IsGestor]
+    permission_classes = [IsGestor, IsGerenteGeral]
     serializer_class = AuditLogSerializer
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        return filtrar_audit_logs(self.request.query_params)
+        return filtrar_audit_logs(self.request.query_params, self.request.user)
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +110,7 @@ class _Echo:
 
 CSV_HEADER = [
     'id', 'timestamp', 'usuario_id', 'usuario_email', 'operacao',
-    'tabela', 'objeto_id', 'dados_antes', 'dados_depois', 'ip_origem', 'endpoint',
+    'tabela', 'objeto_id', 'dados_antes', 'dados_depois', 'ip_origem', 'endpoint', 'cidade',
 ]
 
 
@@ -124,6 +130,7 @@ def gerar_linhas_csv(queryset):
             json.dumps(log.dados_depois, ensure_ascii=False) if log.dados_depois is not None else '',
             log.ip_origem,
             log.endpoint,
+            log.cidade,
         ])
 
 
@@ -139,7 +146,7 @@ class AuditLogExportView(APIView):
         if formato != 'csv':
             raise ValidationError({'formato': 'Apenas o formato "csv" é suportado.'})
 
-        queryset = filtrar_audit_logs(request.query_params)
+        queryset = filtrar_audit_logs(request.query_params, request.user)
 
         response = StreamingHttpResponse(gerar_linhas_csv(queryset), content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="audit_logs.csv"'

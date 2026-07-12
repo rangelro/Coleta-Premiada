@@ -3,12 +3,73 @@ import logging
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.auth import get_user_model
-from program.models import Imovel, Programa, SaldoPontos, Consolidacao, ConstantePontuacao, RegraPrograma
+from program.models import Imovel, Programa, SaldoPontos, Consolidacao, ConstantePontuacao, RegraPrograma, Ciclo
 from collection.models import RegistroColeta, Evidencia, Contestacao
-from accounts.models import Role
+from accounts.models import Role, Cidade
 from .request_store import get_current_request, get_client_ip
 
 logger = logging.getLogger(__name__)
+
+
+def _cidade_usuario(instance):
+    return instance.cidade.nome if instance.cidade_id else None
+
+def _cidade_imovel(instance):
+    return instance.cidade  # CharField direto
+
+def _cidade_programa(instance):
+    return instance.cidade.nome if instance.cidade_id else None
+
+def _cidade_regra_programa(instance):
+    return instance.programa.cidade.nome if instance.programa.cidade_id else None
+
+def _cidade_saldo_pontos(instance):
+    return instance.imovel.cidade
+
+def _cidade_consolidacao(instance):
+    return instance.programa.cidade.nome if instance.programa.cidade_id else None
+
+def _cidade_registro_coleta(instance):
+    return instance.imovel.cidade
+
+def _cidade_evidencia(instance):
+    return instance.coleta.imovel.cidade
+
+def _cidade_contestacao(instance):
+    return instance.coleta.imovel.cidade
+
+def _cidade_ciclo(instance):
+    return instance.programa.cidade.nome if instance.programa.cidade_id else None
+
+def _cidade_cidade(instance):
+    return instance.nome
+
+
+CIDADE_RESOLVERS = {
+    'Imovel': _cidade_imovel,
+    'Programa': _cidade_programa,
+    'RegraPrograma': _cidade_regra_programa,
+    'SaldoPontos': _cidade_saldo_pontos,
+    'Consolidacao': _cidade_consolidacao,
+    'RegistroColeta': _cidade_registro_coleta,
+    'Evidencia': _cidade_evidencia,
+    'Contestacao': _cidade_contestacao,
+    'Ciclo': _cidade_ciclo,
+    'Cidade': _cidade_cidade,
+    # ConstantePontuacao: singleton global — cidade sempre None
+    # Role: permissão global, sem recorte geográfico — cidade sempre None
+    # Usuario: resolvido abaixo via get_user_model() em register_signals()
+}
+
+
+def _resolver_cidade(sender, instance):
+    resolver = CIDADE_RESOLVERS.get(sender.__name__)
+    if not resolver:
+        return None
+    try:
+        return resolver(instance)
+    except Exception:
+        return None
 
 
 def serialize_model(instance):
@@ -85,7 +146,8 @@ def log_save(sender, instance, created, **kwargs):
             dados_antes=dados_antes,
             dados_depois=dados_depois,
             ip_origem=ip_origem,
-            endpoint=endpoint
+            endpoint=endpoint,
+            cidade=_resolver_cidade(sender, instance),
         )
     except Exception as e:
         logger.error(f"Falha ao criar o AuditLog no salvamento de {sender.__name__} (ID: {objeto_id}): {e}")
@@ -131,7 +193,8 @@ def log_delete(sender, instance, **kwargs):
             dados_antes=dados_antes,
             dados_depois=dados_depois,
             ip_origem=ip_origem,
-            endpoint=endpoint
+            endpoint=endpoint,
+            cidade=_resolver_cidade(sender, instance),
         )
     except Exception as e:
         logger.error(f"Falha ao criar o AuditLog na exclusão de {sender.__name__} (ID: {objeto_id}): {e}")
@@ -139,10 +202,11 @@ def log_delete(sender, instance, **kwargs):
 
 def register_signals():
     Usuario = get_user_model()
+    CIDADE_RESOLVERS[Usuario.__name__] = _cidade_usuario
 
     models_to_audit = [
-        Usuario, Role,
-        Imovel, Programa, RegraPrograma, SaldoPontos, Consolidacao, ConstantePontuacao,
+        Usuario, Role, Cidade,
+        Imovel, Programa, RegraPrograma, SaldoPontos, Consolidacao, ConstantePontuacao, Ciclo,
         RegistroColeta, Evidencia, Contestacao,
     ]
 
