@@ -403,6 +403,7 @@ class BeneficioDetailView(APIView):
             'imovel': imovel.inscricao,
             'titular': imovel.titular.nome,
             'programa': programa.nome,
+            'desconto_maximo_percentual': str(programa.desconto_maximo),
             'desconto_total_percentual': str(desconto_final),
             'saldos_por_ciclo': SaldoPontosSerializer(saldos, many=True).data,
         })
@@ -555,12 +556,12 @@ class ReportImpactView(APIView):
 class ConstantePontuacaoView(APIView):
     """
     GET   /scoring-constant — leitura da constante (qualquer autenticado).
-    PATCH /scoring-constant — atualiza a constante (somente supervisor).
+    PATCH /scoring-constant — atualiza a constante (somente gestor).
     """
 
     def get_permissions(self):
         if self.request.method in ('PUT', 'PATCH'):
-            return [IsSupervisor()]
+            return [IsGestor()]
         return [IsAuthenticated()]
 
     def get(self, request):
