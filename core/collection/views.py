@@ -7,12 +7,12 @@ Cobre:
 - /disputes/*                      contestações abertas pelos moradores
 """
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Sum
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from accounts.permissions import (
     IsGestor, IsMorador, IsGestorOrSupervisor,
@@ -124,10 +124,17 @@ class ColetaListCreateView(generics.ListCreateAPIView):
 
 
 class ColetaDetailView(generics.RetrieveUpdateAPIView):
-    """🔒 GET /collections/:id — detalhe de uma coleta."""
-    permission_classes = [IsAuthenticated]
+    """
+    🔒 GET       /collections/:id — detalhe de uma coleta.
+    🔒 PUT/PATCH /collections/:id — atualiza peso e recalcula pontuação (gestor/supervisor).
+    """
     serializer_class = RegistroColetaSerializer
     queryset = RegistroColeta.objects.select_related('imovel', 'imovel__titular')
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return [IsGestorOrSupervisor()]
+        return [IsAuthenticated()]
 
     def get_object(self):
         obj = super().get_object()
@@ -139,27 +146,25 @@ class ColetaDetailView(generics.RetrieveUpdateAPIView):
         if not usuario_pode_ver_cidade(user, obj.imovel.cidade):
             self.permission_denied(self.request)
         return obj
-    '''Função para atualizar a pontuação da coleta'''
+
     def perform_update(self, serializer):
         from program.models import ConstantePontuacao, Ciclo, RegraPrograma, SaldoPontos
+        from program.business_rules import aplicar_teto
         from decimal import Decimal
         from django.utils import timezone
-        
-        coleta = self.get_object()
+
+        coleta = serializer.instance
         peso_antigo = coleta.peso_kg
-        pontuacao_antiga = coleta.pontuacao
-        
+
         nova_coleta = serializer.save()
-        
+
         if nova_coleta.peso_kg != peso_antigo:
             constante = ConstantePontuacao.get_valor()
             pontos_por_kg = Decimal(str(constante.pontos_por_kg))
             nova_pontuacao = (nova_coleta.peso_kg * pontos_por_kg).quantize(Decimal('0.01'))
-            
-            diferenca_pontuacao = nova_pontuacao - pontuacao_antiga
             nova_coleta.pontuacao = nova_pontuacao
             nova_coleta.save(update_fields=['pontuacao'])
-            
+
             programa = nova_coleta.programa
             if programa is not None:
                 hoje = nova_coleta.data_hora_coleta.date() if nova_coleta.data_hora_coleta else timezone.now().date()
@@ -169,21 +174,24 @@ class ColetaDetailView(generics.RetrieveUpdateAPIView):
                     data_fim__gte=hoje,
                     status='aberto'
                 ).first()
-                
+
                 if ciclo:
                     regras, _ = RegraPrograma.objects.get_or_create(programa=programa)
                     saldo, _ = SaldoPontos.objects.get_or_create(
                         imovel=nova_coleta.imovel, programa=programa, ciclo=ciclo,
                         defaults={'desconto_percentual': 0}
                     )
-                    
-                    from program.business_rules import aplicar_teto
-                    diferenca_desconto = (diferenca_pontuacao / regras.pontos_por_real).quantize(Decimal('0.01'))
-                    if diferenca_desconto != 0:
-                        desconto_efetivo = aplicar_teto(saldo.desconto_percentual, diferenca_desconto)
-                        novo_desconto = max(Decimal('0'), saldo.desconto_percentual + desconto_efetivo)
-                        saldo.desconto_percentual = novo_desconto
-                        saldo.save(update_fields=['desconto_percentual'])
+                    # Recalcula o saldo somando todas as coletas do ciclo para evitar
+                    # inconsistência quando a coleta original foi capada pelo teto de 40%.
+                    total_pontuacao = RegistroColeta.objects.filter(
+                        imovel=nova_coleta.imovel,
+                        programa=programa,
+                        data_hora_coleta__date__gte=ciclo.data_inicio,
+                        data_hora_coleta__date__lte=ciclo.data_fim,
+                    ).aggregate(total=Sum('pontuacao'))['total'] or Decimal('0')
+                    novo_desconto_bruto = (total_pontuacao / regras.pontos_por_real).quantize(Decimal('0.01'))
+                    saldo.desconto_percentual = aplicar_teto(Decimal('0'), novo_desconto_bruto)
+                    saldo.save(update_fields=['desconto_percentual'])
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +219,7 @@ class EvidenciaListCreateView(generics.ListCreateAPIView):
         user = request.user
         
         if getattr(user, 'perfil', None) == 'morador' and coleta.imovel.titular_id != user.id:
-            raise PermissionError('Morador só pode anexar evidência em coleta própria.')
+            raise PermissionDenied('Morador só pode anexar evidência em coleta própria.')
 
         arquivo = request.FILES.get('arquivo')
         if not arquivo:

@@ -15,7 +15,7 @@ class RegistroColetaSerializer(serializers.ModelSerializer):
             'programa', 'programa_nome', 'pontuacao', 'data_hora_coleta', 'peso_kg',
             'registrado_por'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'id_microservico', 'pontuacao', 'registrado_por']
 
 
 class EvidenciaSerializer(serializers.ModelSerializer):
