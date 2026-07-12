@@ -29,7 +29,7 @@ from .serializers import (
     RoleSerializer,
     CidadeSerializer,
 )
-from .permissions import IsGestor, IsGerenteGeral, IsGestorOrSupervisor
+from .permissions import IsGestor, IsGerenteGeral, IsGestorOrSupervisor, EmailConfirmado
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ class AuthMeView(generics.RetrieveUpdateDestroyAPIView):
     🔒 PATCH  /auth/me — atualiza dados do próprio usuário.
     🔒 DELETE /auth/me — encerra (desativa) a conta do usuário logado.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmailConfirmado]
     serializer_class = UsuarioSerializer
 
     def get_object(self):
@@ -185,11 +185,51 @@ class GoogleOAuthLoginView(APIView):
                 email=email,
                 nome=nome,
                 perfil='morador',
+                email_confirmado=True,
             )
         return usuario
 
 
 from config.pagination import StandardResultsSetPagination
+
+
+# ---------------------------------------------------------------------------
+# CONFIRMAÇÃO DE E-MAIL
+# ---------------------------------------------------------------------------
+class ConfirmarEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'detail': 'Token obrigatório.'}, status=400)
+
+        from django.utils import timezone
+        try:
+            usuario = Usuario.objects.get(token_confirmacao=token)
+        except Usuario.DoesNotExist:
+            return Response({'detail': 'Token inválido.'}, status=400)
+
+        if usuario.token_expira_em < timezone.now():
+            return Response({'detail': 'Token expirado. Solicite um novo.'}, status=400)
+
+        usuario.email_confirmado = True
+        usuario.token_confirmacao = None
+        usuario.token_expira_em = None
+        usuario.save(update_fields=['email_confirmado', 'token_confirmacao', 'token_expira_em'])
+        return Response({'detail': 'E-mail confirmado com sucesso.'})
+
+
+class ReenviarConfirmacaoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        usuario = request.user
+        if usuario.email_confirmado:
+            return Response({'detail': 'E-mail já confirmado.'}, status=400)
+        from .tasks import enviar_email_confirmacao
+        enviar_email_confirmacao.delay(usuario.pk)
+        return Response({'detail': 'E-mail de confirmação reenviado.'})
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +399,7 @@ class CidadeDetailView(generics.RetrieveUpdateAPIView):
 # ---------------------------------------------------------------------------
 class MeHistoryView(APIView):
     """🔒 GET /me/history — histórico de coletas do usuário logado."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmailConfirmado]
 
     def get(self, request):
         # Importação local para evitar ciclo entre apps.
@@ -376,7 +416,7 @@ class MeHistoryView(APIView):
 
 class MePointsView(APIView):
     """🔒 GET /me/points — total de pontuação acumulada do usuário logado."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmailConfirmado]
 
     def get(self, request):
         from django.db.models import Sum
@@ -392,7 +432,7 @@ class MePointsView(APIView):
 
 class MeBenefitsView(APIView):
     """🔒 GET /me/benefits — benefícios (saldos) do usuário logado."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmailConfirmado]
 
     def get(self, request):
         from program.models import SaldoPontos
@@ -404,7 +444,7 @@ class MeBenefitsView(APIView):
 
 class MeProgramView(APIView):
     """🔒 GET /me/program — programa atual em que o usuário está participando."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmailConfirmado]
 
     def get(self, request):
         from program.models import Programa

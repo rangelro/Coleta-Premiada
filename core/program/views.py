@@ -63,6 +63,13 @@ class CicloViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=status_filter)
         return qs
 
+    def perform_update(self, serializer):
+        ciclo_anterior_status = self.get_object().status
+        ciclo = serializer.save()
+        if ciclo_anterior_status != 'fechado' and ciclo.status == 'fechado':
+            from .tasks import notificar_fim_ciclo
+            notificar_fim_ciclo.delay(ciclo.pk)
+
 # ---------------------------------------------------------------------------
 # IMÓVEIS  /properties/*
 # ---------------------------------------------------------------------------
@@ -224,6 +231,13 @@ class ProgramaDetailView(generics.RetrieveUpdateAPIView):
             self.request.user,
             'cidade__nome',
         )
+
+    def perform_update(self, serializer):
+        programa_ativo_antes = self.get_object().ativo
+        programa = serializer.save()
+        if programa_ativo_antes and not programa.ativo:
+            from .tasks import notificar_fim_programa
+            notificar_fim_programa.delay(programa.pk)
 
 
 class ProgramaRulesView(APIView):

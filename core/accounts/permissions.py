@@ -107,6 +107,17 @@ class ReadOnlyOrGestorDoPrograma(BasePermission):
         return getattr(user, 'perfil', None) == 'gestor'
 
 
+class EmailConfirmado(BasePermission):
+    message = 'E-mail não confirmado. Verifique sua caixa de entrada.'
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.email_confirmado
+        )
+
+
 class ReadOnlyOrGestorOuSupervisorDoPrograma(BasePermission):
     """
     Leitura para gestor/supervisor/gerente_geral; escrita restrita a gestor/supervisor

@@ -70,6 +70,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+        'accounts.permissions.EmailConfirmado',
+    ),
 }
 
 SIMPLE_JWT = {
@@ -162,3 +166,40 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 # LLM local via LM Studio (OpenAI-compatible)
 LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://host.docker.internal:1234')
 LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'accounts': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+        'collection': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+        'program': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+        'django.core.mail': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+    },
+}
+
+# E-mail
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Coleta Premiada <noreply@coletapremiada.com>')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3001')

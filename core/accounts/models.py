@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+import secrets
+from django.utils import timezone
 
 
 class UsuarioManager(BaseUserManager):
@@ -84,6 +86,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     ativo = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     roles = models.ManyToManyField(Role, blank=True, related_name='usuarios')
+    email_confirmado = models.BooleanField(default=False)
+    token_confirmacao = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    token_expira_em = models.DateTimeField(null=True, blank=True)
 
     objects = UsuarioManager()
 
