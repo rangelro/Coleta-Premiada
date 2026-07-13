@@ -1,0 +1,125 @@
+@startuml casos_de_uso
+!theme plain
+left to right direction
+skinparam actorFontSize 14
+skinparam usecaseFontSize 12
+skinparam borderColor #999999
+skinparam usecaseBorderColor #4a9e6b
+skinparam actorBorderColor #2c3e50
+skinparam arrowColor #555555
+
+title Casos de Uso - Coleta Premiada
+
+actor "Morador\n(Cidadão)" as morador
+actor "Coletor\n(Agente de Campo)" as coletor
+actor "Supervisor" as supervisor
+actor "Gestor\n(Gerente Municipal)" as gestor
+actor "Gerente Geral" as gerente_geral
+actor "Sistemas\nExternos" as externo
+
+rectangle "Autenticação" {
+  usecase "UC01 - Cadastrar-se" as UC01
+  usecase "UC02 - Fazer Login" as UC02
+  usecase "UC03 - Login com Google" as UC03
+  usecase "UC04 - Login com Matrícula" as UC04
+  usecase "UC05 - Gerenciar Perfil" as UC05
+}
+
+rectangle "Imóveis" {
+  usecase "UC06 - Cadastrar Imóvel" as UC06
+  usecase "UC07 - Visualizar Imóvel" as UC07
+  usecase "UC08 - Gerenciar Imóveis" as UC08
+  usecase "UC09 - Buscar Imóvel" as UC09
+  usecase "UC10 - Localizar Próximos" as UC10
+}
+
+rectangle "Coleta" {
+  usecase "UC11 - Registrar Coleta" as UC11
+  usecase "UC12 - Visualizar Histórico" as UC12
+  usecase "UC13 - Sincronizar Coletas" as UC13
+  usecase "UC14 - Operar Offline" as UC14
+}
+
+rectangle "Gestão do Programa" {
+  usecase "UC15 - Gerenciar Programa" as UC15
+  usecase "UC16 - Configurar Regras" as UC16
+  usecase "UC17 - Gerenciar Ciclos" as UC17
+  usecase "UC18 - Executar Consolidação" as UC18
+  usecase "UC19 - Gerenciar Cidades" as UC19
+}
+
+rectangle "Pontuação e Benefícios" {
+  usecase "UC20 - Visualizar Pontos" as UC20
+  usecase "UC21 - Visualizar Descontos" as UC21
+  usecase "UC22 - Configurar Pontuação" as UC22
+}
+
+rectangle "Contestações" {
+  usecase "UC23 - Abrir Contestação" as UC23
+  usecase "UC24 - Analisar Contestação" as UC24
+}
+
+rectangle "Relatórios" {
+  usecase "UC25 - Dashboard Executivo" as UC25
+  usecase "UC26 - Relatórios Operacionais" as UC26
+  usecase "UC27 - Relatório com IA" as UC27
+}
+
+rectangle "Administração" {
+  usecase "UC28 - Gerenciar Usuários" as UC28
+  usecase "UC29 - Gerenciar Papéis" as UC29
+  usecase "UC30 - Consultar Auditoria" as UC30
+}
+
+' Morador
+morador --> UC01
+morador --> UC02
+morador --> UC03
+morador --> UC05
+morador --> UC06
+morador --> UC07
+morador --> UC12
+morador --> UC20
+morador --> UC21
+morador --> UC23
+
+' Coletor
+coletor --> UC04
+coletor --> UC09
+coletor --> UC10
+coletor --> UC11
+coletor --> UC12
+coletor --> UC13
+coletor --> UC14
+
+' Supervisor
+supervisor --> UC08
+supervisor --> UC12
+supervisor --> UC22
+supervisor --> UC26
+
+' Gestor
+gestor --> UC08
+gestor --> UC12
+gestor --> UC15
+gestor --> UC16
+gestor --> UC17
+gestor --> UC18
+gestor --> UC24
+gestor --> UC25
+gestor --> UC26
+gestor --> UC27
+gestor --> UC28
+gestor --> UC29
+gestor --> UC30
+
+' Gerente Geral
+gerente_geral --> UC19
+gerente_geral --> UC07
+gerente_geral --> UC12
+gerente_geral --> UC28
+
+' Sistemas Externos
+externo --> UC03
+
+@enduml
