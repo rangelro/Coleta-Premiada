@@ -1,0 +1,105 @@
+@startuml fluxos_principais
+!theme plain
+skinparam backgroundColor #fbfaf6
+skinparam participantPadding 30
+skinparam boxPadding 15
+skinparam arrowColor #555555
+skinparam lifelineBorderColor #4a9e6b
+
+title Fluxo Principal - Coleta Premiada
+
+' Define participantes do sistema
+box "Usuários Web" #e8f5e9
+  participant "Morador" as MOR
+  participant "Gestor" as GES
+  participant "Supervisor" as SUP
+end box
+
+box "Aplicativo Mobile" #fff3e0
+  participant "Coletor\n(App)" as COL
+end box
+
+box "Backend" #e3f2fd
+  participant "Core\n(Django + PostgreSQL)" as CORE
+  participant "Microsserviço\n(Django + MongoDB)" as MS
+  participant "RabbitMQ" as RMQ
+end box
+
+box "Infraestrutura" #f3e5f5
+  participant "MinIO" as MINIO
+  participant "Google\nOAuth" as OAUTH
+  participant "Nominatim" as NOMI
+  participant "LLM" as LLM
+end box
+
+' === FLUXO 1: CADASTRO DO PROGRAMA ===
+CORE <- GES: Cria cidade (Gerente Geral)
+CORE <- GES: Cria programa + regras + ciclo
+note right CORE: Programa vinculado à cidade do gestor
+
+' === FLUXO 2: ADESÃO DO MORADOR ===
+CORE <- MOR: Autocadastro (e-mail/senha ou Google)
+MOR -> OAUTH: Login Google
+OAUTH --> CORE: Dados perfil
+CORE <- MOR: Cadastra imóvel
+CORE -> RMQ: Publica imóvel (fila imoveis)
+RMQ -> MS: Consome imóvel
+MS --> MS: Upsert no MongoDB
+CORE -> NOMI: Geocodifica endereço (async)
+
+' === FLUXO 3: COLETA EM CAMPO ===
+COL -> MS: Login (matrícula + senha)
+MS --> COL: Token JWT
+COL -> MS: Busca imóveis próximos
+MS --> COL: Lista de imóveis
+COL -> MS: Registra coleta
+COL -> COL: Salva offline (SQLite) se sem conexão
+MS -> MINIO: Upload foto (opcional)
+MS -> RMQ: Publica coleta (fila coletas)
+RMQ -> CORE: Consome coleta
+CORE --> CORE: Calcula pontos (peso x pontos_por_kg)
+CORE --> CORE: Registra SaldoPontos
+
+' === FLUXO 4: HISTÓRICO E BENEFÍCIOS ===
+CORE <- MOR: Consulta histórico de coletas
+CORE <- MOR: Consulta pontos acumulados
+CORE <- MOR: Consulta descontos IPTU
+
+' === FLUXO 5: CONTESTAÇÃO ===
+CORE <- MOR: Abre contestação
+CORE <- GES: Analisa e responde contestação
+CORE --> MOR: Status atualizado
+
+' === FLUXO 6: CONSOLIDAÇÃO ===
+CORE <- GES: Executa consolidação
+note right CORE #ffcccc
+  Para cada imóvel no ciclo:
+  1. Verifica mínimo p/ benefício
+  2. Calcula desconto = pontos / pontos_por_real
+  3. Aplica teto de 40%
+  4. Gera Benefício (desconto IPTU)
+  5. Fecha ciclo
+end note
+CORE --> GES: Resultado da consolidação
+
+' === FLUXO 7: RELATÓRIO COM IA ===
+CORE <- GES: Gera relatório narrativo
+CORE -> LLM: Envia dados do programa
+LLM --> CORE: Relatório em linguagem natural
+CORE --> GES: Relatório gerado
+
+' === FLUXO 8: GESTÃO DE USUÁRIOS ===
+CORE <- GES: Cria/gerencia usuários
+CORE <- GES: Atribui papéis
+CORE <- GES: Consulta auditoria
+
+' === FLUXO 9: SUPERVISÃO ===
+CORE <- SUP: Visualiza imóveis e coletas
+CORE <- SUP: Atualiza constante de pontuação
+
+' === FLUXO 10: SINCRONIZAÇÃO OFFLINE (COLETOR) ===
+COL -> COL: Coletas offline no SQLite
+COL -> MS: Sincronização manual ou automática (lote)
+MS --> COL: Confirma sincronização
+
+@enduml

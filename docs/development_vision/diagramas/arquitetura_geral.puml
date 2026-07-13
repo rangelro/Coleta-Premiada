@@ -1,0 +1,108 @@
+@startuml arquitetura_geral
+!theme plain
+skinparam backgroundColor #f8f9fa
+skinparam componentStyle rectangle
+skinparam defaultFontName Sans
+skinparam defaultFontSize 12
+
+title << Visão Geral da Arquitetura >>\nColeta Premiada — Sistema Distribuído
+
+package "coleta-premiada/\nCore (Django 6.0)" as CORE {
+  [accounts\n(Usuários, Roles, Cidades)] as ACCOUNTS
+  [program\n(Imóveis, Programas,\nPontuação, Consolidação)] as PROGRAM
+  [collection\n(RegistroColeta,\nEvidência, Contestação)] as COLLECTION
+  [custom_audit\n(Auditoria)] as AUDIT
+  [reports\n(Relatórios LLM)] as REPORTS
+  [messaging\n(RabbitMQ Producer/Consumer)] as MESSAGING
+
+  database "PostgreSQL 16" as CORE_DB
+  component "Celery Worker\n+ Celery Beat" as CELERY
+
+  ACCOUNTS --> PROGRAM
+  PROGRAM --> COLLECTION
+  PROGRAM --> CELERY : geocoding
+  PROGRAM --> MESSAGING : signals → fila 'imoveis'
+  COLLECTION --> MESSAGING : consumer fila 'coletas'
+  MESSAGING --> COLLECTION : persistir coleta
+  ACCOUNTS --> CORE_DB
+  PROGRAM --> CORE_DB
+  COLLECTION --> CORE_DB
+  AUDIT --> CORE_DB
+  REPORTS --> CORE_DB
+  REPORTS --> ACCOUNTS : valida perfil
+}
+
+package "coleta-premiada-micro/\nCollection MS (Django 6.0)" as MS {
+  [coletores\n(Agentes de Coleta)] as COLETORES
+  [coleta\n(Imóveis, Coleta,\nGeolocalização)] as COLETA
+  [services\n(Fila, Storage, Consumidor)] as MS_SERVICES
+
+  database "MongoDB 7" as MS_DB
+  storage "MinIO\n(Storage de Fotos)" as MINIO
+
+  COLETORES --> COLETA
+  COLETA --> MS_SERVICES : publicar_coleta()
+  COLETA --> MS_DB
+  COLETORES --> MS_DB
+  MS_SERVICES --> MS_DB : upsert_from_evento()
+  MS_SERVICES --> MINIO : upload_foto()
+}
+
+package "coleta-premiada-frontend/\nNext.js 16 + React 19" as FE {
+  [Server Components\n(Páginas)] as SC
+  [Server Actions\n(Mutações)] as SA
+  [Client Components\n(Formulários, UI)] as CC
+  [Middleware\n(Auth + Refresh JWT)] as MW
+
+  CC --> SA : useActionState
+  SA --> SC : revalidate / redirect
+  MW --> SC : valida token
+}
+
+package "coleta-premiada-app/\nReact Native + Expo" as MOBILE {
+  [AuthGuard] as AG
+  [Coletar Wizard\n(4 etapas)] as WIZARD
+  [SQLite Offline] as SQLITE
+  [AutoSync] as AUTOSYNC
+
+  WIZARD --> SQLITE : save offline
+  AUTOSYNC --> SQLITE : get pendentes
+  AG --> MOBILE
+}
+
+package "coleta-premiada-observability/\nPrometheus + Grafana" as OBS {
+  [Prometheus] as PROM
+  [Grafana] as GRAF
+  [Node Exporter] as NODE
+  [cAdvisor] as CADV
+}
+
+'''' Comunicação entre componentes ''''
+
+queue "RabbitMQ\n----\nfilas: imoveis / coletas" as RABBITMQ
+
+MESSAGING --> RABBITMQ : publica 'imoveis'
+MS_SERVICES --> RABBITMQ : publica 'coletas'
+RABBITMQ --> MESSAGING : entrega 'coletas'
+RABBITMQ --> MS_SERVICES : entrega 'imoveis'
+
+
+FE --> CORE : HTTP (CORE_API_URL)
+FE --> MS : HTTP (COLLECTION_API_URL)
+
+MOBILE --> MS : HTTP (API_BASE_URL)
+
+MS --> CORE : HTTP (proxy perfil)
+
+CORE --> OBS : /metrics (django-prometheus)
+MS --> OBS : /metrics (django-prometheus)
+OBS --> CORE : scrape postgres-exporter:9187
+OBS --> MS : scrape mongodb-exporter:9216
+OBS --> RABBITMQ : scrape :15692
+
+legend top
+**Rede Compartilhada:** coleta-observability
+**Ordem de inicialização:** OBS → Core → MS → FE
+endlegend
+
+@enduml

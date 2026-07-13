@@ -1,0 +1,147 @@
+@startuml deploy
+!theme plain
+skinparam backgroundColor #f8f9fa
+skinparam componentStyle rectangle
+skinparam defaultFontName Sans
+skinparam defaultFontSize 12
+
+title << Infraestrutura Docker >>\nColeta Premiada — Implantação
+
+top to bottom direction
+
+package "coleta-premiada-observability/\nRede: coleta-observability" as OBS {
+  [Prometheus\n:9090] as PROM
+  [Grafana\n:3001] as GRAF
+  [Node Exporter\n:9100] as NODE
+  [cAdvisor\n:8080] as CADV
+
+  PROM --> GRAF : datasource
+}
+
+package "coleta-premiada/\ndocker-compose.yml" as CORE_STACK {
+  node "core-network" as NET_CORE
+  node "storage-network" as NET_STORAGE
+  node "messaging-network" as NET_MSG
+
+  database "core-db\nPostgreSQL 16\n:5432" as PGSQL
+  node "core-db-data\n(volume)" as VOL_PG
+
+  component "core\nDjango/Gunicorn\n:8000" as CORE_API
+  component "core-celery\nCelery Worker" as CELERY
+  component "core-celery-beat\nCelery Beat" as CELERY_BEAT
+  component "core-consumer\nconsume_queue" as CONSUMER
+
+  node "rabbitmq\nRabbitMQ 3\n:5672 / :15672" as RMQ
+  node "rabbitmq-data\n(volume)" as VOL_RMQ
+
+  node "minio\nMinIO\n:9000 / :9001" as MINIO
+  node "minio-data\n(volume)" as VOL_MINIO
+
+  component "postgres-exporter\n:9187" as PGEXP
+
+  component "db-backup\npg_dump cron" as BACKUP
+  node "backup-data\n(volume)" as VOL_BACK
+
+  PGSQL -[hidden]> RMQ
+  RMQ -[hidden]> MINIO
+
+  CORE_API --> NET_CORE
+  CELERY --> NET_CORE
+  CELERY_BEAT --> NET_CORE
+  CONSUMER --> NET_CORE
+  PGEXP --> NET_CORE
+
+  CORE_API --> NET_MSG
+  CELERY --> NET_MSG
+  CONSUMER --> NET_MSG
+
+  CORE_API --> NET_STORAGE
+
+  PGSQL --> NET_CORE
+  RMQ --> NET_MSG
+  MINIO --> NET_STORAGE
+  BACKUP --> NET_CORE
+}
+
+rectangle CORE_STACK_BOUND [
+dc: core-db → postgres:16-alpine\ncore → coleta-premiada (dev/prod)\nrabbitmq → rabbitmq:3-management-alpine\nminio → minio/minio
+]
+
+package "coleta-premiada-micro/\ndocker-compose.yml" as MS_STACK {
+  node "ms-local-network" as NET_MS
+
+  database "ms-db\nMongoDB 7\n:27019" as MONGO
+  node "mongo-data\n(volume)" as VOL_MONGO
+
+  component "ms\nDjango/Gunicorn\n:8002" as MS_API
+  component "ms-consumer\nconsumir_imoveis" as MS_CONSUMER
+
+  node "rabbitmq-local\nRabbitMQ\n:5673 / :15673" as RMQ_MS
+
+  component "mongodb-exporter\n:9216" as MONGOEXP
+
+  MONGO --> NET_MS
+  MS_API --> NET_MS
+  MS_CONSUMER --> NET_MS
+  RMQ_MS --> NET_MS
+  MONGOEXP --> NET_MS
+}
+
+rectangle MS_STACK_BOUND [
+dc: ms-db → mongo:7.0\nms → coleta-premiada-ms (dev)\nrabbitmq-local → rabbitmq:3-management\nmongodb-exporter → percona/mongodb_exporter:0.40
+]
+
+package "coleta-premiada-frontend/\ndocker-compose.yml" as FE_STACK {
+  component "frontend\nNext.js 16\n:3001" as NEXT
+}
+
+rectangle FE_STACK_BOUND [
+dc: frontend → coleta-premiada-frontend (dev)\nports: 3001:3001
+volumes: .:/app (bind mount)
+]
+
+package "coleta-premiada-app/\nExpo (fora do Docker)" as APP_STACK {
+  component "App Mobile\nExpo SDK 54" as APP
+  node "SQLite offline" as SQLITE
+  node "SecureStore\n(JWT)" as SSTORE
+}
+
+'''' Comunicação ''''
+
+NEXT --> CORE_API : HTTP (CORE_API_URL)\nRede: coleta-shared
+NEXT --> MS_API : HTTP (COLLECTION_API_URL)\nRede: coleta-shared
+
+MS_API --> CORE_API : HTTP proxy perfil\nextra_hosts: host.docker.internal
+
+APP --> MS_API : HTTP (API_BASE_URL)\nRede local / WiFi
+
+CONSUMER --> RMQ : AMQP (messaging-network)
+MS_CONSUMER --> RMQ : AMQP (ms-local → host)
+RMQ --> CONSUMER : AMQP
+MS_API --> RMQ_MS : AMQP
+
+'''' Métricas ''''
+
+PROM --> CORE_API : scrape /metrics\nRede: coleta-observability
+PROM --> PGEXP : scrape :9187\nRede: coleta-observability
+PROM --> MS_API : scrape /metrics\nRede: coleta-observability
+PROM --> MONGOEXP : scrape :9216\nRede: coleta-observability
+PROM --> RMQ : scrape :15692\nRede: coleta-observability
+PROM --> NODE : scrape :9100
+PROM --> CADV : scrape :8080
+PROM --> NEXT : via cAdvisor\nRede: coleta-observability
+
+'''' Legend ''''
+
+legend top
+**Ordem de inicialização:**
+1. coleta-premiada-observability (cria rede)
+2. coleta-premiada (Core)
+3. coleta-premiada-micro (MS)
+4. coleta-premiada-frontend
+
+**Redes externas compartilhadas:**
+coleta-observability, coleta-shared
+endlegend
+
+@enduml
