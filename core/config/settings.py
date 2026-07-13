@@ -49,6 +49,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
+    "https://coleta-premiada.heitorqueiroga.dev",
 ]
 
 ROOT_URLCONF = 'config.urls'
