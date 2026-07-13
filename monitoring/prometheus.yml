@@ -1,50 +1,7 @@
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-# Alertmanager não configurado: alertas disparam na UI (/alerts) mas não enviam notificações.
-# Para habilitar, adicione um serviço alertmanager e descomente:
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Prometheus centralizado em ../coleta-observability/monitoring/prometheus.yml
 #
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ['alertmanager:9093']
-
-rule_files:
-  - /etc/prometheus/alerts.yml
-
-scrape_configs:
-
-  - job_name: prometheus
-    static_configs:
-      - targets: ['localhost:9090']
-
-  - job_name: postgres
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-
-  - job_name: mongodb
-    static_configs:
-      - targets: ['mongodb-exporter:9216']
-
-  - job_name: node
-    static_configs:
-      - targets: ['node-exporter:9100']
-
-  - job_name: rabbitmq
-    static_configs:
-      - targets: ['rabbitmq:15692']
-
-  - job_name: cadvisor
-    static_configs:
-      - targets: ['cadvisor:8080']
-
-  - job_name: django-core
-    metrics_path: /metrics
-    static_configs:
-      - targets: ['core:8000']
-
-  - job_name: django-ms
-    metrics_path: /metrics
-    static_configs:
-      - targets: ['ms:8001']
+#  Este arquivo é mantido para referência local.
+#  O arquivo canônico está em ../coleta-observability/ e inclui
+#  todos os targets (postgres, mongodb, node, cadvisor, rabbitmq, django, frontend).
+# ═══════════════════════════════════════════════════════════════════════════════

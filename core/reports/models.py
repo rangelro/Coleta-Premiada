@@ -10,6 +10,13 @@ class RelatorioLLM(models.Model):
         ('auditoria', 'Auditoria'),
     ]
 
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('processando', 'Processando'),
+        ('concluido', 'Concluído'),
+        ('erro', 'Erro'),
+    ]
+
     tipo = models.CharField(max_length=20, choices=TIPOS)
     periodo_inicio = models.DateField()
     periodo_fim = models.DateField()
@@ -19,7 +26,14 @@ class RelatorioLLM(models.Model):
         null=True, blank=True,
         related_name='relatorios_llm',
     )
-    relatorio = models.TextField()
+    direcionamento = models.TextField(
+        blank=True, default='',
+        help_text='Instrução adicional do usuário para guiar o tom/foco da análise.',
+    )
+    status = models.CharField(
+        max_length=15, choices=STATUS_CHOICES, default='pendente',
+    )
+    relatorio = models.TextField(blank=True, default='')
     tokens_utilizados = models.PositiveIntegerField(default=0)
     gerado_em = models.DateTimeField(auto_now_add=True)
     gerado_por = models.ForeignKey(

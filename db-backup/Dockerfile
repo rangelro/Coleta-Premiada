@@ -8,7 +8,12 @@ FROM postgres:16-alpine
 ARG MC_VERSION=RELEASE.2025-08-13T08-35-41Z
 
 RUN apk add --no-cache curl \
-    && ARCH=$(uname -m) \
+    && case "$(uname -m)" in \
+         x86_64)  ARCH=amd64 ;; \
+         aarch64) ARCH=arm64 ;; \
+         armv7l)  ARCH=arm   ;; \
+         *)       echo "Unsupported arch: $(uname -m)" && exit 1 ;; \
+       esac \
     && curl -fsSL \
          "https://dl.min.io/client/mc/release/linux-${ARCH}/archive/mc.${MC_VERSION}" \
          -o /usr/local/bin/mc \

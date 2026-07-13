@@ -43,13 +43,13 @@ migrate-check:
 	docker compose run --rm core python manage.py migrate
 
 # Comandos para Monitoramento
-
+# O stack de monitoramento agora é centralizado em ../coleta-observability.
 monitoring-up:
-	docker compose -f docker-compose.monitoring.yml up -d
+	docker compose -f ../coleta-observability/docker-compose.yml up -d
 monitoring-down:
-	docker compose -f docker-compose.monitoring.yml down
+	docker compose -f ../coleta-observability/docker-compose.yml down
 monitoring-logs:
-	docker compose -f docker-compose.monitoring.yml logs -f --tail=100
+	docker compose -f ../coleta-observability/docker-compose.yml logs -f --tail=100
 monitoring-smoke:
 	bash scripts/smoke_test_monitoring.sh
 
@@ -57,3 +57,9 @@ monitoring-smoke:
 
 maintenance-smoke:
 	bash scripts/smoke_test_maintenance.sh
+
+# Relatorio de monitoramento (Python)
+# Requer: pip install psycopg2-binary
+# Uso: make monitor-report ARGS="--json --output /tmp/report.json"
+monitor-report:
+	docker compose run --rm postgres-maintenance python3 /maintenance/monitoring_report.py $(ARGS)

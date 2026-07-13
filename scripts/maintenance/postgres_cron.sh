@@ -15,6 +15,7 @@ LOG_CLEANUP_BATCH_SIZE=${LOG_CLEANUP_BATCH_SIZE:-5000}
 15 2 * * * sh /maintenance/cleanup_logs.sh
 45 2 * * * sh /maintenance/vacuum_analyze.sh
 30 3 * * 0 sh /maintenance/reindex.sh
+0  7 * * * python3 /maintenance/monitoring_report.py > /proc/1/fd/1 2>&1
 EOF
 
 echo "[$(date -Iseconds)] PostgreSQL maintenance cron configured"

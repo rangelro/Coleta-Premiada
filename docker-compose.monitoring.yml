@@ -1,80 +1,24 @@
-services:
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    container_name: coleta-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-    networks:
-      - monitoring
-      - coleta-shared
-    restart: unless-stopped
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Monitoramento agora é CENTRALIZADO em ../coleta-observability.
+#
+#  Para subir o stack de monitoramento:
+#    cd ../coleta-observability && docker compose up -d
+#
+#  Os exporters específicos de cada projeto (postgres-exporter, mongodb-exporter)
+#  já estão declarados nos docker-compose principais e se conectam à rede
+#  coleta-observability automaticamente.
+#
+#  Este arquivo é mantido apenas para referência. Use 'make monitoring-up'
+#  que agora aponta para o compose central.
+# ═══════════════════════════════════════════════════════════════════════════════
 
-  grafana:
-    image: grafana/grafana:11.1.0
-    container_name: coleta-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/coleta-premiada.json
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      - prometheus
-    networks:
-      - monitoring
-    restart: unless-stopped
-
-  postgres_exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: coleta-postgres-exporter
-    ports:
-      - "9187:9187"
-    env_file: .env
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
-    volumes:
-      - ./monitoring/postgres-queries.yml:/etc/postgres_exporter/queries.yml:ro
-    command:
-      - '--extend.query-path=/etc/postgres_exporter/queries.yml'
-    networks:
-      - monitoring
-      - coleta-shared
-    restart: unless-stopped
-
-  node_exporter:
-    image: prom/node-exporter:v1.8.1
-    container_name: coleta-node-exporter
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    networks:
-      - monitoring
-    restart: unless-stopped
-
-volumes:
-  prometheus-data:
-  grafana-data:
-
-networks:
-  monitoring:
-    driver: bridge
-  coleta-shared:
-    external: true
-    name: coleta-shared
+# Para referência, os exporters que cada projeto expõe:
+#
+# Coleta-Premiada/docker-compose.yml:
+#   - postgres-exporter:9187   (métricas PostgreSQL + queries customizadas)
+#
+# cp-collection-ms/docker-compose.yml:
+#   - mongodb-exporter:9216    (métricas MongoDB + queries customizadas)
+#
+# coleta-premiada-frontend/docker-compose.yml:
+#   - /metrics via prom-client  (métricas Next.js)

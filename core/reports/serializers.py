@@ -17,6 +17,7 @@ class RelatorioLLMRequestSerializer(serializers.Serializer):
     tipo = serializers.ChoiceField(choices=[t[0] for t in RelatorioLLM.TIPOS])
     periodo = PeriodoInputSerializer()
     programa_id = serializers.IntegerField(required=False, allow_null=True)
+    direcionamento = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class RelatorioLLMSerializer(serializers.ModelSerializer):
@@ -26,10 +27,11 @@ class RelatorioLLMSerializer(serializers.ModelSerializer):
         model = RelatorioLLM
         fields = [
             'id', 'tipo', 'periodo', 'programa',
-            'relatorio', 'tokens_utilizados', 'gerado_em', 'gerado_por',
+            'direcionamento', 'status', 'relatorio',
+            'tokens_utilizados', 'gerado_em', 'gerado_por',
         ]
         read_only_fields = [
-            'id', 'relatorio', 'tokens_utilizados', 'gerado_em', 'gerado_por',
+            'id', 'status', 'relatorio', 'tokens_utilizados', 'gerado_em', 'gerado_por',
         ]
 
     def get_periodo(self, obj):

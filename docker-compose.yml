@@ -148,7 +148,9 @@ services:
   # - vacuum_analyze: diario as 02:45
   # - reindex: semanal aos domingos as 03:30
   postgres-maintenance:
-    image: postgres:16-alpine
+    build:
+      context: ./scripts/maintenance
+      dockerfile: Dockerfile.maintenance
     env_file: .env
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD}
@@ -176,34 +178,9 @@ services:
           cpus: "0.05"
           memory: 64M
 
-  # Manutencao automatizada dos logs do MongoDB externo (ms-db).
-  # Este repositorio nao define o servico Mongo; o script usa a rede compartilhada.
-  mongo-maintenance:
-    image: mongo:7
-    env_file: .env
-    environment:
-      MONGO_HOST: ms-db
-      MONGO_PORT: ${MONGO_PORT:-27017}
-      MONGO_DB: ${MONGO_INITDB_DATABASE:-coleta_db}
-      MONGO_AUTH_DB: ${MONGO_AUTH_DB:-admin}
-      MONGO_LOG_COLLECTION: ${MONGO_LOG_COLLECTION:-audit_logs}
-      MONGO_LOG_DATE_FIELD: ${MONGO_LOG_DATE_FIELD:-created_at}
-      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
-    volumes:
-      - ./scripts/maintenance:/maintenance:ro
-    command: >
-      bash -c "while true; do sh /maintenance/cleanup_mongo_logs.sh; sleep 86400; done"
-    networks:
-      - coleta-shared
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.1"
-          memory: 128M
-        reservations:
-          cpus: "0.05"
-          memory: 64M
+  # Manutenção do MongoDB é feita exclusivamente pelo cp-collection-ms/mongo-maintenance
+  # (mongo_cron.sh com batch cleanup + manutenção de índices). Serviço removido daqui
+  # para evitar execução concorrente no mesmo banco.
 
   core-consumer:
     build:
@@ -309,6 +286,8 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@core-db:5432/${POSTGRES_DB}?sslmode=disable"
       PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres-exporter/queries.yml
+    command:
+      - --collector.stat_statements
     volumes:
       - ./monitoring/postgres-queries.yml:/etc/postgres-exporter/queries.yml:ro
     depends_on:

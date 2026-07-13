@@ -10,22 +10,21 @@ from program.models import SaldoPontos
 
 logger = logging.getLogger(__name__)
 
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-chat"
 
-class LocalLLMReportService:
+
+class LLMReportService:
     """
-    Serviço de relatórios narrativos usando LLM local via LM Studio.
-    Compatível com a API OpenAI (POST /v1/chat/completions).
+    Serviço de relatórios narrativos usando a API do DeepSeek.
     """
 
     def __init__(self):
-        self.base_url = getattr(settings, 'LOCAL_LLM_BASE_URL', 'http://127.0.0.1:1234')
-        self.model = getattr(settings, 'LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
-        self.endpoint = f"{self.base_url}/v1/chat/completions"
+        self.api_key = settings.DEEPSEEK_API_KEY
+        self.endpoint = DEEPSEEK_API_URL
+        self.model = DEEPSEEK_MODEL
 
     def extrair_dados_do_banco(self, data_inicio, data_fim, programa_id=None):
-        """
-        Consulta e agrega dados relevantes do banco para o período informado.
-        """
         coletas_qs = RegistroColeta.objects.filter(
             data_hora_coleta__range=(data_inicio, data_fim)
         )
@@ -86,7 +85,10 @@ class LocalLLMReportService:
         req = urllib.request.Request(
             self.endpoint,
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            },
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
@@ -96,7 +98,7 @@ class LocalLLMReportService:
         usage = result.get("usage", {})
         total_tokens = usage.get("total_tokens") or 0
         logger.info(
-            "Local LLM usage | prompt_tokens=%s completion_tokens=%s total_tokens=%s",
+            "DeepSeek API usage | prompt_tokens=%s completion_tokens=%s total_tokens=%s",
             usage.get("prompt_tokens"),
             usage.get("completion_tokens"),
             total_tokens,
@@ -106,9 +108,6 @@ class LocalLLMReportService:
     def gerar_relatorio_narrativo(
         self, tipo_relatorio: str, data_inicio, data_fim, programa_id=None
     ) -> dict:
-        """
-        Extrai dados do banco, monta o prompt e chama o LLM local via LM Studio.
-        """
         dados = self.extrair_dados_do_banco(data_inicio, data_fim, programa_id=programa_id)
 
         system_prompt = (
@@ -131,15 +130,15 @@ class LocalLLMReportService:
             texto, tokens = self._chamar_llm(system_prompt, user_prompt)
             return {"relatorio": texto, "tokens_utilizados": tokens, "sucesso": True}
         except urllib.error.URLError as e:
-            logger.error("LM Studio inacessível em %s: %s", self.endpoint, e)
+            logger.error("DeepSeek API inacessível em %s: %s", self.endpoint, e)
             return {
-                "relatorio": f"Erro: LM Studio não está respondendo em {self.endpoint}. Verifique se o servidor está rodando.",
+                "relatorio": f"Erro: não foi possível conectar à API do DeepSeek. Detalhes: {e}",
                 "tokens_utilizados": 0,
                 "sucesso": False,
             }
         except (KeyError, IndexError, json.JSONDecodeError) as e:
-            logger.error("Resposta inesperada do LLM local: %s", e)
-            return {"relatorio": f"Erro: resposta inesperada do LLM local — {e}", "tokens_utilizados": 0, "sucesso": False}
+            logger.error("Resposta inesperada da API DeepSeek: %s", e)
+            return {"relatorio": f"Erro: resposta inesperada da API — {e}", "tokens_utilizados": 0, "sucesso": False}
         except Exception as e:
-            logger.error("Erro ao chamar LLM local: %s", e)
+            logger.error("Erro ao chamar DeepSeek API: %s", e)
             return {"relatorio": f"Erro ao gerar relatório: {e}", "tokens_utilizados": 0, "sucesso": False}
