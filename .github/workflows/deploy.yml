@@ -1,0 +1,35 @@
+name: Deploy Core
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-core
+  cancel-in-progress: false
+
+jobs:
+  # ── CI (reutiliza ci.yml) ──
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # ── CD ──
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ~/coleta-premiada/Coleta-Premiada
+            git pull origin main
+            docker compose -f docker-compose.yml up -d --build
+            docker compose exec -T core python manage.py migrate --noinput
+            docker compose exec -T core python manage.py collectstatic --noinput
+            docker image prune -f

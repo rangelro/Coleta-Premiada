@@ -261,6 +261,10 @@ services:
       coleta-observability:
         aliases:
           - rabbitmq
+      # Broker único compartilhado: o cp-collection-ms conecta aqui por esta rede.
+      coleta-shared:
+        aliases:
+          - rabbitmq
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
@@ -360,8 +364,10 @@ volumes:
 #
 #  core-network          — core-db, core, core-celery*, core-consumer, db-backup
 #  storage-network       — minio (acessado por core)
-#  messaging-network     — rabbitmq + todos os produtores/consumidores
+#  messaging-network     — rabbitmq + produtores/consumidores do core
 #  coleta-observability  — rede externa criada por ../coleta-observability
+#  coleta-shared         — ponte entre stacks: rabbitmq + core, consumido pelo
+#                          cp-collection-ms (broker único compartilhado)
 
 networks:
   core-network:

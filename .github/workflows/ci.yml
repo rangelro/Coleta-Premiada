@@ -1,11 +1,11 @@
 name: CI
 
 on:
-  push: 
-    branches: [main, develop, temp_develop]
+  push:
+    branches: [develop]
   pull_request:
-    branches: [main, develop, temp_develop]
-
+    branches: [main, develop]
+  workflow_call:
 
 jobs:
   check-ci:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Install project
         run: make up
-      
+
       - name: Check Django
         run: make check
 
@@ -31,4 +31,3 @@ jobs:
 
       - name: Apply migrations
         run: make migrate-check
-      
