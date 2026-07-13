@@ -26,7 +26,7 @@ class Command(BaseCommand):
 
         from program.models import Imovel
 
-        pendentes = Imovel.objects.select_related('titular').filter(
+        pendentes = Imovel.objects.select_related('titular', 'cidade').filter(
             Q(latitude__isnull=True) | Q(longitude__isnull=True) | Q(geocodificacao_falhou=True)
         )
         total = pendentes.count()
@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
             endereco = (
                 f"{imovel.logradouro}, {imovel.numero}, "
-                f"{imovel.bairro}, {imovel.cidade}, {imovel.cep}, Brasil"
+                f"{imovel.bairro}, {imovel.cidade.nome}, {imovel.cep}, Brasil"
             )
 
             # Nominatim exige no máximo 1 req/s

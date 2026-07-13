@@ -67,7 +67,11 @@ class Imovel(models.Model):
     numero = models.CharField(max_length=20)
     complemento = models.CharField(max_length=100, blank=True, null=True)
     bairro = models.CharField(max_length=100)
-    cidade = models.CharField(max_length=100)
+    cidade = models.ForeignKey(
+        'accounts.Cidade',
+        on_delete=models.PROTECT,
+        related_name='imoveis',
+    )
     estado = models.CharField(max_length=2, help_text='Sigla do estado (UF)')
     num_moradores = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

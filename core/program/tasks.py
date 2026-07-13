@@ -15,7 +15,7 @@ def geocodificar_imovel(self, imovel_id: int):
     from .models import Imovel
 
     try:
-        imovel = Imovel.objects.select_related('titular').get(pk=imovel_id)
+        imovel = Imovel.objects.select_related('titular', 'cidade').get(pk=imovel_id)
     except Imovel.DoesNotExist:
         logger.warning(f"Imóvel {imovel_id} não encontrado para geocodificação.")
         return
@@ -25,7 +25,7 @@ def geocodificar_imovel(self, imovel_id: int):
 
     endereco = (
         f"{imovel.logradouro}, {imovel.numero}, "
-        f"{imovel.bairro}, {imovel.cidade}, {imovel.cep}, Brasil"
+        f"{imovel.bairro}, {imovel.cidade.nome}, {imovel.cep}, Brasil"
     )
 
     geolocator = Nominatim(user_agent=settings.NOMINATIM_USER_AGENT)

@@ -22,7 +22,7 @@ class UsuarioAdmin(UserAdmin):
             'fields': ('nome', 'cpf')
         }),
         ('Perfil e Acesso', {
-            'fields': ('perfil', 'cidade', 'ativo', 'is_staff', 'is_superuser')
+            'fields': ('perfil', 'cidade', 'ativo', 'is_staff', 'is_superuser', 'email_confirmado')
         }),
     )
 

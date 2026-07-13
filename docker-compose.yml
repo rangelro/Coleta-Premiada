@@ -337,13 +337,20 @@ services:
     build:
       context: ./db-backup
     env_file: .env
+    container_name: coleta-db-backup
     environment:
       POSTGRES_HOST: core-db
       POSTGRES_PORT: "5432"
-      BACKUP_CRON_SCHEDULE: ${BACKUP_CRON_SCHEDULE:-0 2 * * *}
+      BACKUP_DIR: /backups/postgres
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-0 2 * * *}
       BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
       BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
       BACKUP_WEEKLY_DAY: ${BACKUP_WEEKLY_DAY:-7}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      MINIO_BACKUP_BUCKET: ${MINIO_BACKUP_BUCKET:-postgres-backups}
+      NOTIFY_WEBHOOK_URL: ${NOTIFY_WEBHOOK_URL:-}
     depends_on:
       core-db:
         condition: service_healthy

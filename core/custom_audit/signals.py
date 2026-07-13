@@ -15,7 +15,7 @@ def _cidade_usuario(instance):
     return instance.cidade.nome if instance.cidade_id else None
 
 def _cidade_imovel(instance):
-    return instance.cidade  # CharField direto
+    return instance.cidade.nome if instance.cidade_id else None
 
 def _cidade_programa(instance):
     return instance.cidade.nome if instance.cidade_id else None
@@ -24,19 +24,19 @@ def _cidade_regra_programa(instance):
     return instance.programa.cidade.nome if instance.programa.cidade_id else None
 
 def _cidade_saldo_pontos(instance):
-    return instance.imovel.cidade
+    return instance.imovel.cidade.nome if instance.imovel.cidade_id else None
 
 def _cidade_consolidacao(instance):
     return instance.programa.cidade.nome if instance.programa.cidade_id else None
 
 def _cidade_registro_coleta(instance):
-    return instance.imovel.cidade
+    return instance.imovel.cidade.nome if instance.imovel.cidade_id else None
 
 def _cidade_evidencia(instance):
-    return instance.coleta.imovel.cidade
+    return instance.coleta.imovel.cidade.nome if instance.coleta.imovel.cidade_id else None
 
 def _cidade_contestacao(instance):
-    return instance.coleta.imovel.cidade
+    return instance.coleta.imovel.cidade.nome if instance.coleta.imovel.cidade_id else None
 
 def _cidade_ciclo(instance):
     return instance.programa.cidade.nome if instance.programa.cidade_id else None

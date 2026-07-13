@@ -90,7 +90,7 @@ class ImovelListCreateView(generics.ListCreateAPIView):
         else:
             # Gestor/supervisor só enxergam imóveis da própria cidade;
             # gerente_geral enxerga todas.
-            qs = escopar_por_cidade(qs, user, 'cidade')
+            qs = escopar_por_cidade(qs, user, 'cidade__nome')
 
         # Filtros administrativos
         bairro = self.request.query_params.get('bairro')
@@ -99,7 +99,7 @@ class ImovelListCreateView(generics.ListCreateAPIView):
             
         cidade = self.request.query_params.get('cidade')
         if cidade:
-            qs = qs.filter(cidade__icontains=cidade)
+            qs = qs.filter(cidade__nome__icontains=cidade)
             
         ativo = self.request.query_params.get('ativo')
         if ativo is not None:
@@ -136,7 +136,7 @@ class ImovelDetailView(generics.RetrieveUpdateAPIView):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return escopar_por_cidade(Imovel.objects.all(), self.request.user, 'cidade')
+        return escopar_por_cidade(Imovel.objects.all(), self.request.user, 'cidade__nome')
 
     def get_object(self):
         # Suporta busca por ID primário (inteiro) ou inscrição imobiliária (string),
@@ -405,7 +405,7 @@ class BeneficioListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = SaldoPontos.objects.select_related('imovel').all().order_by('-id')
-        qs = escopar_por_cidade(qs, self.request.user, 'imovel__cidade')
+        qs = escopar_por_cidade(qs, self.request.user, 'imovel__cidade__nome')
 
         imovel_id = self.request.query_params.get('imovel_id')
         if imovel_id:
@@ -468,7 +468,7 @@ class ReportParticipationView(APIView):
         from collection.models import RegistroColeta
 
         participantes = (
-            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade__nome')
             .values(
                 'imovel__inscricao',
                 'imovel__titular__nome',
@@ -501,7 +501,7 @@ class ReportCollectionsByCycleView(APIView):
     def get(self, request):
         from collection.models import RegistroColeta
 
-        qs = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+        qs = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade__nome')
         
         programa_id = request.query_params.get('programa_id')
         if not programa_id:
@@ -541,7 +541,7 @@ class ReportRankingView(APIView):
         from collection.models import RegistroColeta
 
         ranking = (
-            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
+            escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade__nome')
             .values('imovel__inscricao', 'imovel__titular__nome')
             .annotate(pontos=Sum('pontuacao'))
             .order_by('-pontos')
@@ -568,8 +568,8 @@ class ReportImpactView(APIView):
     def get(self, request):
         from collection.models import RegistroColeta
 
-        coletas = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade')
-        saldos = escopar_por_cidade(SaldoPontos.objects.all(), request.user, 'imovel__cidade')
+        coletas = escopar_por_cidade(RegistroColeta.objects.all(), request.user, 'imovel__cidade__nome')
+        saldos = escopar_por_cidade(SaldoPontos.objects.all(), request.user, 'imovel__cidade__nome')
 
         programa_id = request.query_params.get('programa_id')
 

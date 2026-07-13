@@ -35,16 +35,19 @@ class CicloSerializer(serializers.ModelSerializer):
 
 class ImovelSerializer(serializers.ModelSerializer):
     titular_nome = serializers.CharField(source='titular.nome', read_only=True)
+    cidade_nome = serializers.CharField(source='cidade.nome', read_only=True)
+    cidade_uf = serializers.CharField(source='cidade.uf', read_only=True)
 
     class Meta:
         model = Imovel
         fields = [
             'id', 'inscricao', 'titular', 'titular_nome', 'cep', 'logradouro', 'numero',
-            'complemento', 'bairro', 'cidade', 'estado', 'num_moradores',
-            'latitude', 'longitude', 'geocodificacao_falhou',
+            'complemento', 'bairro', 'cidade', 'cidade_nome', 'cidade_uf', 'estado',
+            'num_moradores', 'latitude', 'longitude', 'geocodificacao_falhou',
             'ativo', 'data_adesao',
         ]
-        read_only_fields = ['id', 'data_adesao', 'latitude', 'longitude', 'geocodificacao_falhou']
+        read_only_fields = ['id', 'data_adesao', 'latitude', 'longitude', 'geocodificacao_falhou',
+                            'cidade_nome', 'cidade_uf']
 
     def validate_titular(self, value):
         if getattr(value, 'perfil', None) != 'morador':
@@ -54,11 +57,9 @@ class ImovelSerializer(serializers.ModelSerializer):
         return value
 
     def validate_cidade(self, value):
-        from accounts.models import Cidade
-
-        if not Cidade.objects.filter(nome=value, ativo=True).exists():
+        if not value.ativo:
             raise serializers.ValidationError(
-                'Cidade não cadastrada ou inativa. Selecione uma das cidades disponíveis.'
+                'Cidade inativa. Selecione uma das cidades disponíveis.'
             )
         return value
 

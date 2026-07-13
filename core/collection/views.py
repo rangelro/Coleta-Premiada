@@ -57,7 +57,7 @@ class ColetaListCreateView(generics.ListCreateAPIView):
         else:
             # Gestor/supervisor só enxergam coletas da própria cidade;
             # gerente_geral enxerga todas.
-            qs = escopar_por_cidade(qs, user, 'imovel__cidade')
+            qs = escopar_por_cidade(qs, user, 'imovel__cidade__nome')
 
         # Filtros
         imovel_id = self.request.query_params.get('imovel_id')
@@ -143,7 +143,7 @@ class ColetaDetailView(generics.RetrieveUpdateAPIView):
         if getattr(user, 'perfil', None) == 'morador' and obj.imovel.titular_id != user.id:
             self.permission_denied(self.request)
         # Gestor/supervisor só acessam coletas da própria cidade.
-        if not usuario_pode_ver_cidade(user, obj.imovel.cidade):
+        if not usuario_pode_ver_cidade(user, obj.imovel.cidade.nome):
             self.permission_denied(self.request)
         return obj
 
@@ -277,7 +277,7 @@ class ContestacaoListCreateView(generics.ListCreateAPIView):
         else:
             # Gestor/supervisor só enxergam contestações da própria cidade;
             # gerente_geral enxerga todas.
-            qs = escopar_por_cidade(qs, user, 'coleta__imovel__cidade')
+            qs = escopar_por_cidade(qs, user, 'coleta__imovel__cidade__nome')
 
         # Filtros
         status_filter = self.request.query_params.get('status')
@@ -319,7 +319,7 @@ class ContestacaoDetailView(generics.RetrieveUpdateAPIView):
         if getattr(user, 'perfil', None) == 'morador' and obj.aberta_por_id != user.id:
             self.permission_denied(self.request)
         # Gestor/supervisor só acessam contestações da própria cidade.
-        if not usuario_pode_ver_cidade(user, obj.coleta.imovel.cidade):
+        if not usuario_pode_ver_cidade(user, obj.coleta.imovel.cidade.nome):
             self.permission_denied(self.request)
         return obj
 
