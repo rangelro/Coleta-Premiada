@@ -51,7 +51,7 @@ services:
       POSTGRES_PORT: "5432"
       RABBITMQ_HOST: rabbitmq
       MINIO_ENDPOINT: minio:9000
-      DEBUG: "false"
+      DEBUG: ${DEBUG:-false}
     ports:
       - "8001:8000"
     depends_on:
@@ -94,7 +94,7 @@ services:
       POSTGRES_HOST: core-db
       POSTGRES_PORT: "5432"
       RABBITMQ_HOST: rabbitmq
-      DEBUG: "false"
+      DEBUG: ${DEBUG:-false}
     command: celery -A config worker --loglevel=info --concurrency=2
     depends_on:
       core-db:
@@ -123,7 +123,7 @@ services:
       POSTGRES_HOST: core-db
       POSTGRES_PORT: "5432"
       RABBITMQ_HOST: rabbitmq
-      DEBUG: "false"
+      DEBUG: ${DEBUG:-false}
     command: celery -A config beat --loglevel=info
     depends_on:
       core-db:
@@ -191,7 +191,7 @@ services:
       POSTGRES_HOST: core-db
       POSTGRES_PORT: "5432"
       RABBITMQ_HOST: rabbitmq
-      DEBUG: "false"
+      DEBUG: ${DEBUG:-false}
     command: python manage.py consume_queue
     depends_on:
       core-db:

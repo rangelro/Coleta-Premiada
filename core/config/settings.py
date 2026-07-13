@@ -52,6 +52,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://coleta-premiada.heitorqueiroga.dev",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3001",
+    "https://coleta-premiada.heitorqueiroga.dev",
+    "https://coleta-premiada-back.heitorqueiroga.dev",
+]
+
 ROOT_URLCONF = 'config.urls'
 
 # PostgreSQL via Docker ou local
@@ -136,6 +142,7 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
+
 
 # ---------------------------------------------------------------------------
 # Celery — broker = mesmo RabbitMQ usado pelo messaging
