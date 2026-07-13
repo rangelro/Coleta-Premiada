@@ -118,6 +118,17 @@ class EmailConfirmado(BasePermission):
         )
 
 
+class CadastroCompleto(BasePermission):
+    message = 'Cadastro complementar obrigatório. Acesse POST /auth/completar-cadastro para concluir.'
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            getattr(request.user, 'cadastro_completo', True)
+        )
+
+
 class ReadOnlyOrGestorOuSupervisorDoPrograma(BasePermission):
     """
     Leitura para gestor/supervisor/gerente_geral; escrita restrita a gestor/supervisor

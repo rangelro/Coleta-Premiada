@@ -4,6 +4,7 @@ from .views import (
     AuthMeView,
     AuthCreateView,
     GoogleOAuthLoginView,
+    GoogleCadastroComplementarView,
     ConfirmarEmailView,
     ReenviarConfirmacaoView,
     UserManagerView,
@@ -21,12 +22,13 @@ from .views import (
 
 urlpatterns = [
     # /auth
-    path('auth/logout',                  LogoutView.as_view(),              name='auth-logout'),
-    path('auth/me',                      AuthMeView.as_view(),              name='auth-me'),
-    path('auth/google',                  GoogleOAuthLoginView.as_view(),    name='auth-google'),
-    path('auth/confirmar-email/',        ConfirmarEmailView.as_view(),      name='auth-confirmar-email'),
-    path('auth/reenviar-confirmacao/',   ReenviarConfirmacaoView.as_view(), name='auth-reenviar-confirmacao'),
-    path('auth',                         AuthCreateView.as_view(),          name='auth-create'),
+    path('auth/logout',                  LogoutView.as_view(),                    name='auth-logout'),
+    path('auth/me',                      AuthMeView.as_view(),                    name='auth-me'),
+    path('auth/google',                  GoogleOAuthLoginView.as_view(),          name='auth-google'),
+    path('auth/completar-cadastro',      GoogleCadastroComplementarView.as_view(), name='auth-completar-cadastro'),
+    path('auth/confirmar-email/',        ConfirmarEmailView.as_view(),            name='auth-confirmar-email'),
+    path('auth/reenviar-confirmacao/',   ReenviarConfirmacaoView.as_view(),       name='auth-reenviar-confirmacao'),
+    path('auth',                         AuthCreateView.as_view(),                name='auth-create'),
 
     # /users (Gerenciamento de Usuários)
     path('users',                UserManagerView.as_view(),  name='users-list-create'),

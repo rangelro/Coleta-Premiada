@@ -75,7 +75,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     cpf = models.CharField(max_length=14, unique=True, null=True, blank=True)
     matricula = models.CharField(max_length=20, unique=True, null=True, blank=True)
     nome = models.CharField(max_length=150)
+    sobrenome = models.CharField(max_length=100, blank=True, default='')
     perfil = models.CharField(max_length=20, choices=PERFIS)
+    cadastro_completo = models.BooleanField(
+        default=True,
+        help_text='False apenas para moradores que se cadastraram via Google e ainda não preencheram o formulário complementar.',
+    )
     cidade = models.ForeignKey(
         Cidade,
         on_delete=models.PROTECT,

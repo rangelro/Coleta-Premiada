@@ -21,6 +21,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from .models import Usuario, Role, Cidade
 from .serializers import (
     GoogleOAuthSerializer,
+    GoogleCadastroComplementarSerializer,
     UsuarioSerializer,
     UsuarioCreateSerializer,
     UsuarioSelfRegisterSerializer,
@@ -29,7 +30,7 @@ from .serializers import (
     RoleSerializer,
     CidadeSerializer,
 )
-from .permissions import IsGestor, IsGerenteGeral, IsGestorOrSupervisor, EmailConfirmado
+from .permissions import IsGestor, IsGerenteGeral, IsGestorOrSupervisor, EmailConfirmado, CadastroCompleto
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +138,11 @@ class GoogleOAuthLoginView(APIView):
 
         refresh = RefreshToken.for_user(usuario)
         return Response(
-            {'access': str(refresh.access_token), 'refresh': str(refresh)},
+            {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'cadastro_completo': usuario.cadastro_completo,
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -173,21 +178,57 @@ class GoogleOAuthLoginView(APIView):
 
     def _get_or_create_usuario(self, google_data: dict) -> 'Usuario':
         email = google_data.get('email', '')
-        nome = google_data.get('name', '') or email.split('@')[0]
 
         usuario = Usuario.objects.filter(email=email).first()
-        if usuario:
-            if usuario.nome != nome:
-                usuario.nome = nome
-                usuario.save(update_fields=['nome'])
-        else:
+        if not usuario:
+            # Nome do Google é apenas um placeholder; o usuário irá substituí-lo
+            # no formulário de cadastro complementar obrigatório.
+            nome_placeholder = (
+                google_data.get('given_name')
+                or (google_data.get('name') or '').split()[0]
+                or email.split('@')[0]
+            )
             usuario = Usuario.objects.create_user(
                 email=email,
-                nome=nome,
+                nome=nome_placeholder,
                 perfil='morador',
                 email_confirmado=True,
+                cadastro_completo=False,
             )
         return usuario
+
+
+class GoogleCadastroComplementarView(APIView):
+    """
+    PATCH /auth/completar-cadastro — preenche nome, sobrenome e CPF após login via Google.
+
+    Obrigatório na primeira vez. Enquanto `cadastro_completo=False`, o acesso
+    às demais áreas do sistema fica bloqueado pela permissão CadastroCompleto.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        usuario = request.user
+        if usuario.cadastro_completo:
+            return Response(
+                {'detail': 'Cadastro complementar já foi concluído.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = GoogleCadastroComplementarSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        usuario.nome = data['nome']
+        usuario.sobrenome = data['sobrenome']
+        usuario.cpf = data['cpf']
+        usuario.cadastro_completo = True
+        usuario.save(update_fields=['nome', 'sobrenome', 'cpf', 'cadastro_completo'])
+
+        return Response({'detail': 'Cadastro complementar concluído com sucesso.'})
 
 
 from config.pagination import StandardResultsSetPagination
@@ -399,7 +440,7 @@ class CidadeDetailView(generics.RetrieveUpdateAPIView):
 # ---------------------------------------------------------------------------
 class MeHistoryView(APIView):
     """🔒 GET /me/history — histórico de coletas do usuário logado."""
-    permission_classes = [IsAuthenticated, EmailConfirmado]
+    permission_classes = [IsAuthenticated, EmailConfirmado, CadastroCompleto]
 
     def get(self, request):
         # Importação local para evitar ciclo entre apps.
@@ -416,7 +457,7 @@ class MeHistoryView(APIView):
 
 class MePointsView(APIView):
     """🔒 GET /me/points — total de pontuação acumulada do usuário logado."""
-    permission_classes = [IsAuthenticated, EmailConfirmado]
+    permission_classes = [IsAuthenticated, EmailConfirmado, CadastroCompleto]
 
     def get(self, request):
         from django.db.models import Sum
@@ -432,7 +473,7 @@ class MePointsView(APIView):
 
 class MeBenefitsView(APIView):
     """🔒 GET /me/benefits — benefícios (saldos) do usuário logado."""
-    permission_classes = [IsAuthenticated, EmailConfirmado]
+    permission_classes = [IsAuthenticated, EmailConfirmado, CadastroCompleto]
 
     def get(self, request):
         from program.models import SaldoPontos
@@ -444,7 +485,7 @@ class MeBenefitsView(APIView):
 
 class MeProgramView(APIView):
     """🔒 GET /me/program — programa atual em que o usuário está participando."""
-    permission_classes = [IsAuthenticated, EmailConfirmado]
+    permission_classes = [IsAuthenticated, EmailConfirmado, CadastroCompleto]
 
     def get(self, request):
         from program.models import Programa

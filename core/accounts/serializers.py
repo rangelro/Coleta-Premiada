@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Usuario, Role, Cidade
+from .utils import validar_cpf, formatar_cpf
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -21,7 +22,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = [
-            'id', 'email', 'cpf', 'nome', 'perfil', 'cidade', 'ativo', 'roles',
+            'id', 'email', 'cpf', 'nome', 'sobrenome', 'perfil',
+            'cidade', 'ativo', 'roles', 'cadastro_completo',
         ]
         read_only_fields = ['id', 'roles']
 
@@ -65,6 +67,19 @@ def _validar_cidade_e_hierarquia(data, *, instance=None, request=None):
     return data
 
 
+def _validate_cpf_field(value, *, instance=None):
+    """Valida formato e dígitos verificadores do CPF e normaliza para XXX.XXX.XXX-XX."""
+    if not validar_cpf(value):
+        raise serializers.ValidationError('CPF inválido. Verifique os dígitos.')
+    cpf_formatado = formatar_cpf(value)
+    qs = Usuario.objects.filter(cpf=cpf_formatado)
+    if instance is not None:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        raise serializers.ValidationError('Este CPF já está cadastrado.')
+    return cpf_formatado
+
+
 class UsuarioCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     cidade = serializers.PrimaryKeyRelatedField(
@@ -74,6 +89,11 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['email', 'cpf', 'nome', 'perfil', 'cidade', 'password']
+
+    def validate_cpf(self, value):
+        if value:
+            return _validate_cpf_field(value, instance=self.instance)
+        return value
 
     def validate(self, data):
         return _validar_cidade_e_hierarquia(data, request=self.context.get('request'))
@@ -110,7 +130,12 @@ class UsuarioUpdateSerializer(serializers.ModelSerializer):
     """Usado por /auth/me para que o titular atualize seus próprios dados."""
     class Meta:
         model = Usuario
-        fields = ['nome', 'cpf']
+        fields = ['nome', 'sobrenome', 'cpf']
+
+    def validate_cpf(self, value):
+        if value:
+            return _validate_cpf_field(value, instance=self.instance)
+        return value
 
 
 class UsuarioManagerUpdateSerializer(serializers.ModelSerializer):
@@ -121,7 +146,12 @@ class UsuarioManagerUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['nome', 'cpf', 'perfil', 'cidade', 'ativo']
+        fields = ['nome', 'sobrenome', 'cpf', 'perfil', 'cidade', 'ativo']
+
+    def validate_cpf(self, value):
+        if value:
+            return _validate_cpf_field(value, instance=self.instance)
+        return value
 
     def validate(self, data):
         return _validar_cidade_e_hierarquia(
@@ -132,3 +162,27 @@ class UsuarioManagerUpdateSerializer(serializers.ModelSerializer):
 class GoogleOAuthSerializer(serializers.Serializer):
     code = serializers.CharField()
     redirect_uri = serializers.CharField()
+
+
+class GoogleCadastroComplementarSerializer(serializers.Serializer):
+    """Formulário complementar obrigatório após o primeiro login via Google."""
+    nome = serializers.CharField(max_length=150)
+    sobrenome = serializers.CharField(max_length=100)
+    cpf = serializers.CharField(max_length=14)
+
+    def validate_nome(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Nome obrigatório.')
+        return value
+
+    def validate_sobrenome(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Sobrenome obrigatório.')
+        return value
+
+    def validate_cpf(self, value):
+        request = self.context.get('request')
+        instance = request.user if request else None
+        return _validate_cpf_field(value, instance=instance)
