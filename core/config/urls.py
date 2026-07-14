@@ -32,5 +32,5 @@ urlpatterns = [
     path('api/collection/', include('collection.urls')),
     path('api/audit/', include('custom_audit.urls')),
     path('api/reports/', include('reports.urls')),
-    path('api/cicd-test/', lambda request: JsonResponse({"status": "ok", "message": "CI/CD funciona!"})),
+    path('api/cicd-test/', lambda request: JsonResponse({"status": "ok", "message": "CI/CD funciona de verdade!"})),
 ]
