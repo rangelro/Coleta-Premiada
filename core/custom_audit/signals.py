@@ -4,7 +4,7 @@ from django.db.models.signals import pre_save, post_save, post_delete
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.auth import get_user_model
 from program.models import Imovel, Programa, SaldoPontos, Consolidacao, ConstantePontuacao, RegraPrograma, Ciclo
-from collection.models import RegistroColeta, Evidencia, Contestacao
+from collection.models import RegistroColeta, Contestacao
 from accounts.models import Role, Cidade
 from .request_store import get_current_request, get_client_ip
 
@@ -32,9 +32,6 @@ def _cidade_consolidacao(instance):
 def _cidade_registro_coleta(instance):
     return instance.imovel.cidade.nome if instance.imovel.cidade_id else None
 
-def _cidade_evidencia(instance):
-    return instance.coleta.imovel.cidade.nome if instance.coleta.imovel.cidade_id else None
-
 def _cidade_contestacao(instance):
     return instance.coleta.imovel.cidade.nome if instance.coleta.imovel.cidade_id else None
 
@@ -52,7 +49,6 @@ CIDADE_RESOLVERS = {
     'SaldoPontos': _cidade_saldo_pontos,
     'Consolidacao': _cidade_consolidacao,
     'RegistroColeta': _cidade_registro_coleta,
-    'Evidencia': _cidade_evidencia,
     'Contestacao': _cidade_contestacao,
     'Ciclo': _cidade_ciclo,
     'Cidade': _cidade_cidade,
@@ -207,7 +203,7 @@ def register_signals():
     models_to_audit = [
         Usuario, Role, Cidade,
         Imovel, Programa, RegraPrograma, SaldoPontos, Consolidacao, ConstantePontuacao, Ciclo,
-        RegistroColeta, Evidencia, Contestacao,
+        RegistroColeta, Contestacao,
     ]
 
     for model in models_to_audit:

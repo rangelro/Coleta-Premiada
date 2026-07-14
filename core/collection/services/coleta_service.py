@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from collection.models import RegistroColeta, Evidencia
+from collection.models import RegistroColeta
 from program.models import Imovel, Programa, RegraPrograma, SaldoPontos, ConstantePontuacao, Ciclo
 from program.business_rules import aplicar_teto
 from collection.services.storage import upload_arquivo
@@ -17,14 +17,16 @@ def registrar_nova_coleta(
     data_hora,
     id_microservico: str = None,
     registrado_por = None,
-    foto_file = None
+    foto_file = None,
+    foto_url: str = ''
 ) -> RegistroColeta:
     """
     Serviço centralizado para registrar uma coleta.
     Calcula pontos, atualiza saldo do morador e salva a coleta.
     
     Se id_microservico for None (ex: coleta manual pelo painel), autogera um UUID.
-    Se foto_file for fornecido, anexa como Evidência.
+    Se foto_file for fornecido, faz upload para o MinIO e armazena o object key.
+    Se foto_url for fornecida (vinda do microserviço), armazena o object key extraído.
     """
     is_manual = False
     if not id_microservico:
@@ -56,6 +58,14 @@ def registrar_nova_coleta(
     if not data_hora:
         data_hora = timezone.now()
 
+    # Resolve foto
+    object_key = foto_url
+    if foto_file:
+        try:
+            object_key = upload_arquivo(foto_file, content_type=foto_file.content_type)
+        except Exception as e:
+            logger.error(f"Erro ao fazer upload da foto da coleta {id_microservico}: {e}")
+
     # Persiste o registro no PostgreSQL
     coleta = RegistroColeta.objects.create(
         id_microservico=id_microservico,
@@ -64,6 +74,7 @@ def registrar_nova_coleta(
         pontuacao=pontuacao,
         data_hora_coleta=data_hora,
         peso_kg=peso_kg,
+        foto_url=object_key,
         registrado_por=registrado_por
     )
 
@@ -92,17 +103,5 @@ def registrar_nova_coleta(
                 saldo.save()
         else:
             logger.warning(f"Nenhum ciclo aberto em {hoje} para o programa {programa.nome}. Saldo não atualizado.")
-
-    # Se tiver foto_file anexada diretamente no POST
-    if foto_file:
-        try:
-            url = upload_arquivo(foto_file, content_type=foto_file.content_type)
-            Evidencia.objects.create(
-                coleta=coleta,
-                arquivo_url=url,
-                enviada_por=registrado_por
-            )
-        except Exception as e:
-            logger.error(f"Erro ao salvar foto da coleta {id_microservico}: {e}")
 
     return coleta

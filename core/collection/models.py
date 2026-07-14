@@ -22,6 +22,11 @@ class RegistroColeta(models.Model):
     )
     data_hora_coleta = models.DateTimeField(null=True, blank=True)
     peso_kg = models.DecimalField(max_digits=8, decimal_places=3, default=0)
+    foto_url = models.CharField(
+        max_length=500, blank=True, default='',
+        help_text='Caminho relativo do objeto no MinIO (ex: evidencias/uuid.jpg). '
+                  'O frontend monta a URL do proxy a partir deste path.',
+    )
     ciclo_consolidado = models.ForeignKey(
         'program.Ciclo', on_delete=models.SET_NULL,
         null=True, blank=True,
@@ -40,24 +45,6 @@ class RegistroColeta(models.Model):
 
     def __str__(self):
         return f"{self.imovel.inscricao} | Pontuação: {self.pontuacao}"
-
-
-class Evidencia(models.Model):
-    """Evidência (foto/arquivo) anexada a uma coleta."""
-    coleta = models.ForeignKey(RegistroColeta, on_delete=models.CASCADE, related_name='evidencias')
-    descricao = models.CharField(max_length=255, blank=True)
-    arquivo_url = models.URLField(help_text='URL do objeto no S3/MinIO')
-    enviada_em = models.DateTimeField(auto_now_add=True)
-    enviada_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
-        related_name='evidencias_enviadas',
-    )
-
-    class Meta:
-        ordering = ['-enviada_em']
-
-    def __str__(self):
-        return f"Evidência de {self.coleta} ({self.enviada_em:%d/%m/%Y})"
 
 
 class Contestacao(models.Model):

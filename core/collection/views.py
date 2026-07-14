@@ -2,16 +2,17 @@
 Class-Based Views do app `collection`.
 
 Cobre:
-- /collections/*                   coletas registradas no Core
-- /collections/:id/evidences       evidências (fotos) associadas a uma coleta
-- /disputes/*                      contestações abertas pelos moradores
+- /collections/*           coletas registradas no Core
+- /collections/images/<path>  proxy de imagens do MinIO para o browser
+- /disputes/*              contestações abertas pelos moradores
 """
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum
+from django.http import StreamingHttpResponse
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from accounts.permissions import (
@@ -19,10 +20,9 @@ from accounts.permissions import (
 )
 from accounts.scoping import escopar_por_cidade, usuario_pode_ver_cidade
 
-from .models import RegistroColeta, Evidencia, Contestacao
+from .models import RegistroColeta, Contestacao
 from .serializers import (
     RegistroColetaSerializer,
-    EvidenciaSerializer,
     ContestacaoSerializer,
     ContestacaoCreateSerializer,
     ContestacaoUpdateSerializer,
@@ -195,52 +195,32 @@ class ColetaDetailView(generics.RetrieveUpdateAPIView):
 
 
 # ---------------------------------------------------------------------------
-# EVIDÊNCIAS  /collections/:id/evidences
+# IMAGE PROXY  /collections/images/<path:object_key>
 # ---------------------------------------------------------------------------
-class EvidenciaListCreateView(generics.ListCreateAPIView):
+class ImageProxyView(APIView):
     """
-    🔒 GET  /collections/:id/evidences — lista evidências da coleta.
-    🔒 POST /collections/:id/evidences — anexa nova evidência.
-
-    Quem pode anexar:
-    - gestor, supervisor (qualquer evidência);
-    - morador, apenas para coletas dos seus próprios imóveis.
+    Proxy público que busca imagens no MinIO e as entrega ao browser.
+    O endpoint é público (AllowAny) porque <img> tags não enviam
+    Authorization header. O object key contém UUID, sendo imprevisível.
     """
-    serializer_class = EvidenciaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        return Evidencia.objects.filter(coleta_id=self.kwargs['id'])
+    def get(self, request, object_key=None):
+        from collection.services.storage import get_arquivo_stream
 
-    def create(self, request, *args, **kwargs):
-        from collection.services.storage import upload_arquivo
-        
-        coleta = get_object_or_404(RegistroColeta, pk=self.kwargs['id'])
-        user = request.user
-        
-        if getattr(user, 'perfil', None) == 'morador' and coleta.imovel.titular_id != user.id:
-            raise PermissionDenied('Morador só pode anexar evidência em coleta própria.')
+        # Aceita ?key= como parâmetro de query string
+        key = request.query_params.get('key') or object_key
+        if not key:
+            return Response({'error': 'Parâmetro ?key= é obrigatório'}, status=status.HTTP_400_BAD_REQUEST)
 
-        arquivo = request.FILES.get('arquivo')
-        if not arquivo:
-            # Caso não mandem o arquivo cru, tenta ver se mandaram arquivo_url direto
-            arquivo_url = request.data.get('arquivo_url')
-            if not arquivo_url:
-                return Response({'error': 'Nenhum arquivo ou arquivo_url enviado.'}, status=status.HTTP_400_BAD_REQUEST)
-            url = arquivo_url
-        else:
-            url = upload_arquivo(arquivo, content_type=arquivo.content_type)
-            
-        descricao = request.data.get('descricao', '')
-        
-        evidencia = Evidencia.objects.create(
-            coleta=coleta,
-            arquivo_url=url,
-            descricao=descricao,
-            enviada_por=user
-        )
-        serializer = self.get_serializer(evidencia)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        stream, content_type, size = get_arquivo_stream(key)
+        if not stream:
+            return Response({'error': 'Imagem não encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+        response = StreamingHttpResponse(stream, content_type=content_type)
+        response['Content-Length'] = size
+        response['Cache-Control'] = 'public, max-age=86400'
+        return response
 
 
 # ---------------------------------------------------------------------------

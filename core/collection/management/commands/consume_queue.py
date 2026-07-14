@@ -79,15 +79,31 @@ class Command(BaseCommand):
                 return
 
             from collection.services.coleta_service import registrar_nova_coleta
+            from urllib.parse import urlparse
             peso_kg = Decimal(str(dados.get('peso_total_kg', 0)))
             data_hora_raw = dados.get('data_hora')
+            foto_url_raw = dados.get('foto_url', '')
+
+            # Extrai o object key da URL completa enviada pelo microserviço
+            # Ex: http://minio:9000/coletas/evidencias/uuid.jpg -> evidencias/uuid.jpg
+            object_key = ''
+            if foto_url_raw:
+                try:
+                    parsed = urlparse(foto_url_raw)
+                    # Remove barra inicial e primeiro segmento (nome do bucket)
+                    # "/coletas/evidencias/uuid.jpg" -> ["coletas", "evidencias/uuid.jpg"]
+                    parts = parsed.path.lstrip('/').split('/', 1)
+                    object_key = parts[1] if len(parts) > 1 else parts[0]
+                except Exception:
+                    object_key = foto_url_raw
 
             coleta = registrar_nova_coleta(
                 imovel=imovel,
                 peso_kg=peso_kg,
                 data_hora=data_hora_raw,
                 id_microservico=coleta_id,
-                registrado_por=None
+                registrado_por=None,
+                foto_url=object_key
             )
 
             self.stdout.write(

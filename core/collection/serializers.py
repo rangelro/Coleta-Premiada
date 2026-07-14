@@ -1,9 +1,9 @@
 from rest_framework import serializers
-from .models import RegistroColeta, Evidencia, Contestacao
+from .models import RegistroColeta, Contestacao
 
 
 class RegistroColetaSerializer(serializers.ModelSerializer):
-    #Adicionados campos para a leitura dos dados do imovel e programa pelo front
+    # Adicionados campos para a leitura dos dados do imovel e programa pelo front
     imovel_inscricao = serializers.CharField(source='imovel.inscricao', read_only=True)
     titular_nome = serializers.CharField(source='imovel.titular.nome', read_only=True)
     programa_nome = serializers.CharField(source='programa.nome', read_only=True)
@@ -13,16 +13,9 @@ class RegistroColetaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'id_microservico', 'imovel', 'imovel_inscricao', 'titular_nome',
             'programa', 'programa_nome', 'pontuacao', 'data_hora_coleta', 'peso_kg',
-            'registrado_por'
+            'registrado_por', 'foto_url'
         ]
         read_only_fields = ['id', 'id_microservico', 'pontuacao', 'registrado_por']
-
-
-class EvidenciaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Evidencia
-        fields = ['id', 'coleta', 'descricao', 'arquivo_url', 'enviada_em', 'enviada_por']
-        read_only_fields = ['id', 'enviada_em', 'enviada_por', 'coleta']
 
 
 class ContestacaoCreateSerializer(serializers.ModelSerializer):
@@ -37,13 +30,15 @@ class ContestacaoSerializer(serializers.ModelSerializer):
     coleta_peso = serializers.CharField(source='coleta.peso_kg', read_only=True)
     coleta_data = serializers.DateTimeField(source='coleta.data_hora_coleta', read_only=True)
     coleta_pontuacao = serializers.CharField(source='coleta.pontuacao', read_only=True)
+    coleta_foto_url = serializers.CharField(source='coleta.foto_url', read_only=True, allow_blank=True)
 
     class Meta:
         model = Contestacao
         fields = [
             'id', 'coleta', 'aberta_por', 'motivo', 'status',
             'analisada_por', 'resposta', 'aberta_em', 'atualizada_em',
-            'morador_nome', 'imovel_inscricao', 'coleta_peso', 'coleta_data', 'coleta_pontuacao'
+            'morador_nome', 'imovel_inscricao', 'coleta_peso', 'coleta_data', 'coleta_pontuacao',
+            'coleta_foto_url'
         ]
         read_only_fields = [
             'id', 'aberta_por', 'analisada_por',

@@ -8,3 +8,4 @@ class RegistroColetaAdmin(admin.ModelAdmin):
     search_fields = ('id_microservico', 'imovel__inscricao')
     list_filter = ('programa',)
     autocomplete_fields = ('programa',)
+    readonly_fields = ('foto_url',)

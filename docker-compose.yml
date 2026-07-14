@@ -51,6 +51,9 @@ services:
       POSTGRES_PORT: "5432"
       RABBITMQ_HOST: rabbitmq
       MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       DEBUG: ${DEBUG:-false}
     ports:
       - "8001:8000"
@@ -226,7 +229,10 @@ services:
     volumes:
       - minio-data:/data
     networks:
-      - storage-network
+      storage-network: {}
+      coleta-shared:
+        aliases:
+          - minio
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -363,11 +369,11 @@ volumes:
 # ─── NETWORKS ─────────────────────────────────────────────────────────────────
 #
 #  core-network          — core-db, core, core-celery*, core-consumer, db-backup
-#  storage-network       — minio (acessado por core)
+#  storage-network       — minio (acessado por core via rede interna)
 #  messaging-network     — rabbitmq + produtores/consumidores do core
 #  coleta-observability  — rede externa criada por ../coleta-observability
-#  coleta-shared         — ponte entre stacks: rabbitmq + core, consumido pelo
-#                          cp-collection-ms (broker único compartilhado)
+#  coleta-shared         — ponte entre stacks: rabbitmq + core + minio, consumido pelo
+#                          cp-collection-ms (broker + storage compartilhados)
 
 networks:
   core-network:
