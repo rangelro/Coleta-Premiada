@@ -14,7 +14,7 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 
-from accounts.permissions import IsGestor, IsGerenteGeral
+from accounts.permissions import IsGestor
 from accounts.scoping import escopar_por_cidade
 from config.pagination import StandardResultsSetPagination
 
@@ -90,7 +90,7 @@ class AuditLogListView(generics.ListAPIView):
     Filtros suportados via query params: usuario_id, tabela, operacao,
     data_inicio, data_fim, objeto_id. Paginação obrigatória (máx. 100/página).
     """
-    permission_classes = [IsGestor, IsGerenteGeral]
+    permission_classes = [IsGestor]
     serializer_class = AuditLogSerializer
     pagination_class = StandardResultsSetPagination
 
