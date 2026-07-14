@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -31,4 +32,5 @@ urlpatterns = [
     path('api/collection/', include('collection.urls')),
     path('api/audit/', include('custom_audit.urls')),
     path('api/reports/', include('reports.urls')),
+    path('api/cicd-test/', lambda request: JsonResponse({"status": "ok", "message": "CI/CD funciona!"})),
 ]
