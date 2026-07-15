@@ -27,7 +27,7 @@ fi
 echo "${CRON_SCHEDULE:-0 2 * * *} /scripts/backup.sh >> /var/log/cron.log 2>&1" > /scripts/crontab
 crontab /scripts/crontab
 
-cron
+crond
 
 CRON_SCHEDULE="${CRON_SCHEDULE:-0 2 * * *}"
 KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"
