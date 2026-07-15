@@ -183,11 +183,15 @@ LOGGING = {
             'format': '[{asctime}] {levelname} {name}: {message}',
             'style': '{',
         },
+        'json': {
+            'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'json',
         },
     },
     'root': {
@@ -199,8 +203,10 @@ LOGGING = {
         'collection': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
         'program': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
         'django.core.mail': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
+        'custom_audit': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
     },
 }
+
 
 # E-mail
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
