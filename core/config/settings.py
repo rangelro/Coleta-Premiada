@@ -175,14 +175,12 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://host.docker.internal:1234')
 LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'google/gemma-4-e2b')
 
+_LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name}: {message}',
-            'style': '{',
-        },
         'json': {
             'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
             'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
@@ -199,11 +197,15 @@ LOGGING = {
         'level': 'WARNING',
     },
     'loggers': {
-        'accounts': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
-        'collection': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
-        'program': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
-        'django.core.mail': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
-        'custom_audit': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'accounts':         {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'collection':       {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'program':          {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'reports':          {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'messaging':        {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'django.core.mail': {'handlers': ['console'], 'level': _LOG_LEVEL, 'propagate': False},
+        'custom_audit':     {'handlers': ['console'], 'level': 'INFO',     'propagate': False},
+        'celery':           {'handlers': ['console'], 'level': 'INFO',     'propagate': False},
+        'celery.task':      {'handlers': ['console'], 'level': 'INFO',     'propagate': False},
     },
 }
 
