@@ -148,6 +148,21 @@ def log_save(sender, instance, created, **kwargs):
     except Exception as e:
         logger.error(f"Falha ao criar o AuditLog no salvamento de {sender.__name__} (ID: {objeto_id}): {e}")
 
+    # 🔍 Só envia para o Loki (stdout) se for Imóvel ou Coleta
+    if sender.__name__ in ['Imovel', 'RegistroColeta']:
+        logger.info(
+            f"Integração - {operacao}: {sender.__name__} (ID: {objeto_id})",
+            extra={
+                "operacao": operacao,
+                "tabela": tabela,
+                "objeto_id": objeto_id,
+                "usuario_email": usuario_email,
+                "ip_origem": ip_origem,
+                "endpoint": endpoint,
+                "dados_depois": dados_depois
+            }
+        )
+
 
 def log_delete(sender, instance, **kwargs):
     """
@@ -194,6 +209,21 @@ def log_delete(sender, instance, **kwargs):
         )
     except Exception as e:
         logger.error(f"Falha ao criar o AuditLog na exclusão de {sender.__name__} (ID: {objeto_id}): {e}")
+
+    # 🔍 Só envia para o Loki (stdout) se for Imóvel ou Coleta
+    if sender.__name__ in ['Imovel', 'RegistroColeta']:
+        logger.info(
+            f"Integração - DELETE: {sender.__name__} (ID: {objeto_id})",
+            extra={
+                "operacao": operacao,
+                "tabela": tabela,
+                "objeto_id": objeto_id,
+                "usuario_email": usuario_email,
+                "ip_origem": ip_origem,
+                "endpoint": endpoint,
+                "dados_antes": dados_antes
+            }
+        )
 
 
 def register_signals():
