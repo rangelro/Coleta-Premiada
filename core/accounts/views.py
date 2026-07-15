@@ -7,9 +7,12 @@ Cobre:
 - /roles/*      CRUD de papéis (permissões)
 - /me/*         portal do cidadão (histórico, pontos, benefícios, programa)
 """
+import logging
 import requests as http_client
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
@@ -115,28 +118,39 @@ class GoogleOAuthLoginView(APIView):
         code = serializer.validated_data['code']
         redirect_uri = serializer.validated_data['redirect_uri']
 
+        logger.info("[GoogleOAuth] Iniciando troca de código. redirect_uri=%s", redirect_uri)
+
         access_token = self._exchange_code(code, redirect_uri)
         if access_token is None:
+            logger.error("[GoogleOAuth] _exchange_code retornou None — abortando")
             return Response(
                 {'detail': 'Falha ao obter token do Google. Verifique o código ou tente novamente.'},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
+        logger.info("[GoogleOAuth] access_token obtido com sucesso. Buscando dados do usuário.")
+
         google_user = self._fetch_google_user(access_token)
         if google_user is None:
+            logger.error("[GoogleOAuth] _fetch_google_user retornou None — abortando")
             return Response(
                 {'detail': 'Falha ao buscar dados do usuário no Google.'},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
+        logger.info("[GoogleOAuth] Dados do usuário recebidos. email=%s", google_user.get('email'))
+
         usuario = self._get_or_create_usuario(google_user)
         if not usuario.ativo:
+            logger.warning("[GoogleOAuth] Usuário inativo. email=%s", google_user.get('email'))
             return Response(
                 {'detail': 'Conta inativa. Entre em contato com o administrador.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         refresh = RefreshToken.for_user(usuario)
+        logger.info("[GoogleOAuth] Login bem-sucedido. email=%s cadastro_completo=%s",
+                    usuario.email, usuario.cadastro_completo)
         return Response(
             {
                 'access': str(refresh.access_token),
@@ -147,6 +161,7 @@ class GoogleOAuthLoginView(APIView):
         )
 
     def _exchange_code(self, code: str, redirect_uri: str) -> str | None:
+        logger.debug("[GoogleOAuth._exchange_code] POST %s redirect_uri=%s", self._GOOGLE_TOKEN_URL, redirect_uri)
         try:
             resp = http_client.post(
                 self._GOOGLE_TOKEN_URL,
@@ -159,21 +174,45 @@ class GoogleOAuthLoginView(APIView):
                 },
                 timeout=10,
             )
+            logger.debug("[GoogleOAuth._exchange_code] status=%s body=%s", resp.status_code, resp.text[:500])
             resp.raise_for_status()
-            return resp.json().get('access_token')
+            token = resp.json().get('access_token')
+            if not token:
+                logger.error("[GoogleOAuth._exchange_code] Resposta OK mas sem access_token. body=%s", resp.text[:500])
+            return token
+        except http_client.exceptions.Timeout:
+            logger.error("[GoogleOAuth._exchange_code] Timeout ao chamar %s", self._GOOGLE_TOKEN_URL)
+            return None
+        except http_client.exceptions.HTTPError as exc:
+            logger.error("[GoogleOAuth._exchange_code] HTTPError status=%s body=%s",
+                         exc.response.status_code if exc.response is not None else "?",
+                         exc.response.text[:500] if exc.response is not None else "")
+            return None
         except Exception:
+            logger.exception("[GoogleOAuth._exchange_code] Erro inesperado")
             return None
 
     def _fetch_google_user(self, access_token: str) -> dict | None:
+        logger.debug("[GoogleOAuth._fetch_google_user] GET %s", self._GOOGLE_USERINFO_URL)
         try:
             resp = http_client.get(
                 self._GOOGLE_USERINFO_URL,
                 headers={'Authorization': f'Bearer {access_token}'},
                 timeout=10,
             )
+            logger.debug("[GoogleOAuth._fetch_google_user] status=%s body=%s", resp.status_code, resp.text[:500])
             resp.raise_for_status()
             return resp.json()
+        except http_client.exceptions.Timeout:
+            logger.error("[GoogleOAuth._fetch_google_user] Timeout ao chamar %s", self._GOOGLE_USERINFO_URL)
+            return None
+        except http_client.exceptions.HTTPError as exc:
+            logger.error("[GoogleOAuth._fetch_google_user] HTTPError status=%s body=%s",
+                         exc.response.status_code if exc.response is not None else "?",
+                         exc.response.text[:500] if exc.response is not None else "")
+            return None
         except Exception:
+            logger.exception("[GoogleOAuth._fetch_google_user] Erro inesperado")
             return None
 
     def _get_or_create_usuario(self, google_data: dict) -> 'Usuario':
