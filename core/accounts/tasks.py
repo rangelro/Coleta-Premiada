@@ -50,3 +50,51 @@ def enviar_email_confirmacao(self, usuario_id: int):
             usuario.email, exc, self.request.retries + 1, self.max_retries + 1,
         )
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def enviar_email_convite(self, usuario_id: int):
+    from .models import Usuario
+
+    try:
+        usuario = Usuario.objects.get(pk=usuario_id)
+    except Usuario.DoesNotExist:
+        logger.warning("enviar_email_convite: usuário %s não encontrado.", usuario_id)
+        return
+
+    token = usuario.token_confirmacao
+    if not token:
+        logger.warning("enviar_email_convite: token não encontrado para usuário %s.", usuario_id)
+        return
+
+    link = f"{settings.FRONTEND_BASE_URL}/definir-senha?token={token}"
+
+    perfil_labels = {
+        'supervisor': 'Supervisor',
+        'gestor': 'Gestor',
+        'gerente_geral': 'Gerente Geral',
+    }
+    perfil_display = perfil_labels.get(usuario.perfil, usuario.perfil)
+
+    logger.info("enviar_email_convite: enviando para %s (perfil=%s)", usuario.email, usuario.perfil)
+
+    try:
+        send_mail(
+            subject='Bem-vindo ao Coleta Premiada — Defina sua senha',
+            message=(
+                f"Olá, {usuario.nome}!\n\n"
+                f"Você foi cadastrado como {perfil_display} no sistema Coleta Premiada.\n\n"
+                f"Clique no link abaixo para definir sua senha (válido por 24h):\n{link}\n\n"
+                "Se não esperava este convite, entre em contato com o administrador."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[usuario.email],
+            fail_silently=False,
+        )
+        logger.info("enviar_email_convite: e-mail enviado com sucesso para %s.", usuario.email)
+    except Exception as exc:
+        logger.error(
+            "enviar_email_convite: falha ao enviar para %s — %s. Tentativa %s/%s.",
+            usuario.email, exc, self.request.retries + 1, self.max_retries + 1,
+        )
+        raise self.retry(exc=exc)

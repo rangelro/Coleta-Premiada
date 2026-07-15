@@ -276,6 +276,43 @@ from config.pagination import StandardResultsSetPagination
 # ---------------------------------------------------------------------------
 # CONFIRMAÇÃO DE E-MAIL
 # ---------------------------------------------------------------------------
+class DefinirSenhaConviteView(APIView):
+    """POST /auth/definir-senha — define a senha de um usuário criado administrativamente."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token')
+        password = request.data.get('password')
+
+        if not token or not password:
+            return Response({'detail': 'Token e senha são obrigatórios.'}, status=400)
+
+        if len(password) < 8:
+            return Response({'detail': 'A senha deve ter no mínimo 8 caracteres.'}, status=400)
+
+        from django.utils import timezone
+        try:
+            usuario = Usuario.objects.get(token_confirmacao=token)
+        except Usuario.DoesNotExist:
+            return Response({'detail': 'Token inválido.'}, status=400)
+
+        if usuario.token_expira_em < timezone.now():
+            return Response({'detail': 'Token expirado. Solicite um novo cadastro.'}, status=400)
+
+        usuario.set_password(password)
+        usuario.email_confirmado = True
+        usuario.token_confirmacao = None
+        usuario.token_expira_em = None
+        usuario.save(update_fields=['password', 'email_confirmado', 'token_confirmacao', 'token_expira_em'])
+
+        refresh = RefreshToken.for_user(usuario)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'cadastro_completo': usuario.cadastro_completo,
+        })
+
+
 class ConfirmarEmailView(APIView):
     permission_classes = [AllowAny]
 
@@ -333,8 +370,12 @@ class UserManagerView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Usuario.objects.all().order_by('nome')
-        
-        # Filtros
+
+        # Gestor e supervisor só enxergam usuários da própria cidade, sem gerente_geral
+        user = self.request.user
+        if getattr(user, 'perfil', None) in ('gestor', 'supervisor'):
+            queryset = queryset.filter(cidade=user.cidade).exclude(perfil='gerente_geral')
+
         perfil = self.request.query_params.get('perfil')
         if perfil:
             queryset = queryset.filter(perfil=perfil)
@@ -351,7 +392,7 @@ class UserManagerView(generics.ListCreateAPIView):
             queryset = queryset.filter(
                 Q(nome__icontains=search) | Q(email__icontains=search)
             )
-            
+
         return queryset
 
 
@@ -362,7 +403,13 @@ class UserManagerDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE /users/:id — Desativa um usuário (só Gestor).
     """
     permission_classes = [IsGestor]
-    queryset = Usuario.objects.all()
+
+    def get_queryset(self):
+        # Gestor só pode acessar usuários da própria cidade; gerente_geral acessa todos
+        user = self.request.user
+        if getattr(user, 'perfil', None) == 'gestor':
+            return Usuario.objects.filter(cidade=user.cidade).exclude(perfil='gerente_geral')
+        return Usuario.objects.all()
 
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):

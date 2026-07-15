@@ -32,11 +32,16 @@ def _validar_cidade_e_hierarquia(data, *, instance=None, request=None):
     """
     Regras compartilhadas por criação/edição administrativa de usuário:
     - gestor/supervisor exigem cidade;
-    - um gestor não pode criar/promover ninguém para gerente_geral, e só pode
-      criar/promover gestor ou supervisor para a própria cidade (a cidade
-      enviada é ignorada e substituída pela do próprio gestor).
+    - morador não pode ser criado/alterado via endpoint administrativo;
+    - gestor só pode criar/promover supervisor para a própria cidade;
+    - gerente_geral pode criar gestor, supervisor e gerente_geral.
     """
     perfil = data.get('perfil', instance.perfil if instance else None)
+
+    if perfil == 'morador':
+        raise serializers.ValidationError(
+            {'perfil': 'Morador não pode ser criado via endpoint administrativo.'}
+        )
 
     if 'cidade' in data:
         cidade_efetiva = data['cidade']
@@ -55,14 +60,12 @@ def _validar_cidade_e_hierarquia(data, *, instance=None, request=None):
 
     ator = getattr(request, 'user', None) if request else None
     if ator is not None and getattr(ator, 'perfil', None) == 'gestor':
-        if perfil == 'gerente_geral':
+        if perfil in ('gerente_geral', 'gestor'):
             raise serializers.ValidationError(
-                {'perfil': 'Um gestor não pode criar ou promover usuários para gerente_geral.'}
+                {'perfil': 'Um gestor só pode criar supervisores.'}
             )
-        if perfil in ('gestor', 'supervisor'):
-            # Gestor só gerencia a própria cidade: força o vínculo, ignorando
-            # qualquer cidade diferente que tenha sido enviada.
-            data['cidade'] = ator.cidade
+        # supervisor: força vínculo com a própria cidade do gestor
+        data['cidade'] = ator.cidade
 
     return data
 
@@ -81,14 +84,14 @@ def _validate_cpf_field(value, *, instance=None):
 
 
 class UsuarioCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    """Criação administrativa: sem senha no formulário — enviada por e-mail."""
     cidade = serializers.PrimaryKeyRelatedField(
         queryset=Cidade.objects.all(), required=False, allow_null=True,
     )
 
     class Meta:
         model = Usuario
-        fields = ['email', 'cpf', 'nome', 'perfil', 'cidade', 'password']
+        fields = ['email', 'cpf', 'nome', 'perfil', 'cidade']
 
     def validate_cpf(self, value):
         if value:
@@ -99,31 +102,45 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
         return _validar_cidade_e_hierarquia(data, request=self.context.get('request'))
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
-        usuario = Usuario(**validated_data)
-        usuario.set_password(password)
+        import secrets
+        from .utils import gerar_token_confirmacao
+        senha_temporaria = secrets.token_urlsafe(16)
+        usuario = Usuario(cadastro_completo=True, **validated_data)
+        usuario.set_password(senha_temporaria)
         usuario.save()
+        # Token gerado de forma síncrona para garantir que esteja no banco
+        # antes de enfileirar a task de envio.
+        gerar_token_confirmacao(usuario)
+        from .tasks import enviar_email_convite
+        enviar_email_convite.delay(usuario.pk)
         return usuario
 
 
-class UsuarioSelfRegisterSerializer(UsuarioCreateSerializer):
+class UsuarioSelfRegisterSerializer(serializers.ModelSerializer):
     """
-    Usado pelo cadastro público (/auth, sem autenticação).
+    Cadastro público (/auth, sem autenticação). Sempre cria como 'morador'.
+    Gestor/supervisor/gerente_geral só podem ser criados via /users.
+    """
+    password = serializers.CharField(write_only=True, min_length=8)
 
-    Sempre cria com perfil 'morador' — a criação de gestor/supervisor/
-    gerente_geral só pode ser feita por um usuário já autorizado via /users.
-    """
-    class Meta(UsuarioCreateSerializer.Meta):
+    class Meta:
+        model = Usuario
         fields = ['email', 'cpf', 'nome', 'password']
 
+    def validate_cpf(self, value):
+        if value:
+            return _validate_cpf_field(value, instance=self.instance)
+        return value
+
     def validate(self, data):
-        # Cadastro público nunca passa por regras de cidade/hierarquia:
-        # perfil é sempre 'morador', que não exige cidade própria.
         return data
 
     def create(self, validated_data):
-        validated_data['perfil'] = 'morador'
-        return super().create(validated_data)
+        password = validated_data.pop('password')
+        usuario = Usuario(perfil='morador', **validated_data)
+        usuario.set_password(password)
+        usuario.save()
+        return usuario
 
 
 class UsuarioUpdateSerializer(serializers.ModelSerializer):
